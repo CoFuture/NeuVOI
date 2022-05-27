@@ -1,4 +1,5 @@
 import os
+import copy
 
 
 # 读取swc的相关信息
@@ -27,11 +28,35 @@ class SWCReader:
                 }
                 self.swc_data.append(temp)
 
+    def getNodeCnt(self):
+        return len(self.swc_data)
+
     def getSWCFileName(self):
         return self.file_name
 
     def getSWCData(self):
         return self.swc_data
+
+    def getSWCSegments(self):
+        seg_list = []
+        seg_temp = []
+        for node in self.swc_data:
+            # 首节点特殊处理
+            if node["parent"] == -1:
+                seg_temp.append(node)
+                continue
+
+            if node["parent"] != node["idx"] - 1:
+                # branch node 导出 空栈
+                seg_list.append(copy.deepcopy(seg_temp))
+                seg_temp = [node]
+            else:
+                # 非branch node 加入栈中
+                seg_temp.append(node)
+
+        # 处理最后一个seg
+        seg_list.append(copy.deepcopy(seg_temp))
+        return seg_list
 
 
 if __name__ == '__main__':
@@ -41,11 +66,8 @@ if __name__ == '__main__':
     print("filename:", SWC.getSWCFileName())
     swc_data = SWC.getSWCData()
 
+    swc_segments = SWC.getSWCSegments()
     cnt = 0
-    for node_info in swc_data:
-        if int(node_info["parent"]) != int(node_info["idx"]) - 1:
-            cnt += 1
-
     print("branch cnt:", cnt)
 
     print("swc data:", len(SWC.getSWCData()))
