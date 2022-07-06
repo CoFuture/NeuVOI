@@ -118,3 +118,203 @@ class CropHandler:
             bb_list.append(seg_bb_list)
 
         return bb_list
+
+
+#
+class VoxelCropHandler:
+    def __init__(self, swc_nodes, voxel_size=64, box_max_size=256):
+        self.swcNodes = swc_nodes
+
+        # voxel grid相关参数
+        self.voxelSize = voxel_size
+
+        self.boxMaxSize = box_max_size
+
+        # voxel划分信息
+        self.dx = -1
+        self.dy = -1
+        self.dz = -1
+
+    # 获取index邻域block的index
+    def getAdjacentList(self, b_index):
+        index_list = []
+
+        if self.dx == -1 or self.dy == -1 or self.dz == -1:
+            return index_list
+
+        total_block = self.dx * self.dy * self.dz
+
+        if 0 <= b_index - 1 < total_block:
+            index_list.append(b_index - 1)
+
+        if 0 <= b_index + 1 < total_block:
+            index_list.append(b_index + 1)
+
+        if 0 <= b_index - self.dx < total_block:
+            index_list.append(b_index - self.dx)
+
+        if 0 <= b_index + self.dx < total_block:
+            index_list.append(b_index + self.dx)
+
+        if 0 <= b_index - self.dx * self.dy < total_block:
+            index_list.append(b_index - self.dx * self.dy)
+
+        if 0 <= b_index + self.dx * self.dy < total_block:
+            index_list.append(b_index + self.dx * self.dy)
+
+        return index_list
+
+    def isAdjacent(self, b_index1, b_index2):
+
+        pass
+
+    def voxelCrop(self, box_padding=5):
+        # 计算AABB
+        x_min = self.swcNodes[0]["x"]
+        x_max = self.swcNodes[0]["x"]
+
+        y_min = self.swcNodes[0]["y"]
+        y_max = self.swcNodes[0]["y"]
+
+        z_min = self.swcNodes[0]["z"]
+        z_max = self.swcNodes[0]["z"]
+
+        for node in self.swcNodes:
+            x_min = min(node["x"], x_min)
+            x_max = max(node["x"], x_max)
+
+            y_min = min(node["y"], y_min)
+            y_max = max(node["y"], y_max)
+
+            z_min = min(node["z"], z_min)
+            z_max = max(node["z"], z_max)
+
+        # voxel grid 操作
+        x_min = x_min - box_padding
+        x_max = x_max + box_padding
+
+        y_min = y_min - box_padding
+        y_max = y_max + box_padding
+
+        z_min = z_min - box_padding
+        z_max = z_max + box_padding
+
+        dx = (x_max - x_min) // self.voxelSize + 1
+        dy = (y_max - y_min) // self.voxelSize + 1
+        dz = (z_max - z_min) // self.voxelSize + 1
+
+        voxel_grid = {}
+        for node in self.swcNodes:
+            # 计算index
+            hx = (node["x"] - x_min) // self.voxelSize
+            hy = (node["y"] - y_min) // self.voxelSize
+            hz = (node["z"] - z_min) // self.voxelSize
+
+            grid_index = hx + hy * dx + hz * dx * dy
+            if str(grid_index) in voxel_grid:
+                voxel_grid[str(grid_index)]["nodes"].append(node["idx"])
+            else:
+                grid_pos = [
+                    x_min + hx * self.voxelSize + self.voxelSize / 2,
+                    y_min + hy * self.voxelSize + self.voxelSize / 2,
+                    z_min + hz * self.voxelSize + self.voxelSize / 2,
+                ]
+                voxel_grid[str(grid_index)] = {
+                    "pos": grid_pos,
+                    "size": [self.voxelSize, self.voxelSize, self.voxelSize],
+                    "nodes": [node["idx"]]
+                }
+
+        # todo block combine
+
+        #
+
+        # dict to list处理
+        voxel_grid_list = []
+        for grid_idx, value in voxel_grid.items():
+            voxel_grid_list.append(value)
+
+        return voxel_grid_list
+
+    def voxelCropAndCombine(self, box_padding=5):
+        # 计算AABB
+        x_min = self.swcNodes[0]["x"]
+        x_max = self.swcNodes[0]["x"]
+
+        y_min = self.swcNodes[0]["y"]
+        y_max = self.swcNodes[0]["y"]
+
+        z_min = self.swcNodes[0]["z"]
+        z_max = self.swcNodes[0]["z"]
+
+        for node in self.swcNodes:
+            x_min = min(node["x"], x_min)
+            x_max = max(node["x"], x_max)
+
+            y_min = min(node["y"], y_min)
+            y_max = max(node["y"], y_max)
+
+            z_min = min(node["z"], z_min)
+            z_max = max(node["z"], z_max)
+
+        # voxel grid 操作
+        x_min = x_min - box_padding
+        x_max = x_max + box_padding
+
+        y_min = y_min - box_padding
+        y_max = y_max + box_padding
+
+        z_min = z_min - box_padding
+        z_max = z_max + box_padding
+
+        dx = (x_max - x_min) // self.voxelSize + 1
+        dy = (y_max - y_min) // self.voxelSize + 1
+        dz = (z_max - z_min) // self.voxelSize + 1
+
+        self.dx = dx
+        self.dy = dy
+        self.dz = dz
+
+        voxel_grid = {}
+        for node in self.swcNodes:
+            # 计算index
+            hx = (node["x"] - x_min) // self.voxelSize
+            hy = (node["y"] - y_min) // self.voxelSize
+            hz = (node["z"] - z_min) // self.voxelSize
+
+            grid_index = hx + hy * dx + hz * dx * dy
+            if str(grid_index) in voxel_grid:
+                voxel_grid[str(grid_index)]["nodes"].append(node["idx"])
+            else:
+                grid_pos = [
+                    x_min + hx * self.voxelSize + self.voxelSize / 2,
+                    y_min + hy * self.voxelSize + self.voxelSize / 2,
+                    z_min + hz * self.voxelSize + self.voxelSize / 2,
+                ]
+                voxel_grid[str(grid_index)] = {
+                    "pos": grid_pos,
+                    "size": [self.voxelSize, self.voxelSize, self.voxelSize],
+                    "nodes": [node["idx"]],
+                    "combined": False
+                }
+
+        # todo block combine
+        idx_all_list = voxel_grid.keys()
+
+        for grid_idx, value in voxel_grid.items():
+            adj_index_list = self.getAdjacentList(int(grid_idx))
+            for adj_idx in adj_index_list:
+                if str(adj_idx) in idx_all_list:
+                    # 邻近的block在列表中
+
+                    pass
+                pass
+        #
+
+        # dict to list处理
+        voxel_grid_list = []
+        for grid_idx, value in voxel_grid.items():
+            voxel_grid_list.append(value)
+
+        return voxel_grid_list
+        pass
