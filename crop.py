@@ -122,12 +122,11 @@ class CropHandler:
 
 #
 class VoxelCropHandler:
-    def __init__(self, swc_nodes, voxel_size=64, box_max_size=256):
+    def __init__(self, swc_nodes, voxel_size=64, box_max_size=512):
         self.swcNodes = swc_nodes
 
         # voxel grid相关参数
         self.voxelSize = voxel_size
-
         self.boxMaxSize = box_max_size
 
         # voxel划分信息
@@ -135,39 +134,11 @@ class VoxelCropHandler:
         self.dy = -1
         self.dz = -1
 
-    # 获取index邻域block的index
-    def getAdjacentList(self, b_index):
-        index_list = []
+        # combine paras default: 5 5
+        # self.blockNodeThreshold = node_threshold
+        self.blockDensityThreshold = -1
 
-        if self.dx == -1 or self.dy == -1 or self.dz == -1:
-            return index_list
-
-        total_block = self.dx * self.dy * self.dz
-
-        if 0 <= b_index - 1 < total_block:
-            index_list.append(b_index - 1)
-
-        if 0 <= b_index + 1 < total_block:
-            index_list.append(b_index + 1)
-
-        if 0 <= b_index - self.dx < total_block:
-            index_list.append(b_index - self.dx)
-
-        if 0 <= b_index + self.dx < total_block:
-            index_list.append(b_index + self.dx)
-
-        if 0 <= b_index - self.dx * self.dy < total_block:
-            index_list.append(b_index - self.dx * self.dy)
-
-        if 0 <= b_index + self.dx * self.dy < total_block:
-            index_list.append(b_index + self.dx * self.dy)
-
-        return index_list
-
-    def isAdjacent(self, b_index1, b_index2):
-
-        pass
-
+    # 对swc进行voxel grid化
     def voxelCrop(self, box_padding=5):
         # 计算AABB
         x_min = self.swcNodes[0]["x"]
@@ -236,7 +207,165 @@ class VoxelCropHandler:
 
         return voxel_grid_list
 
+    # 获取index邻域block的index
+    def getAdjacentList(self, b_index):
+        index_list = []
+
+        if self.dx == -1 or self.dy == -1 or self.dz == -1:
+            return index_list
+
+        total_block = self.dx * self.dy * self.dz
+
+        if 0 <= b_index - 1 < total_block:
+            index_list.append(b_index - 1)
+
+        if 0 <= b_index + 1 < total_block:
+            index_list.append(b_index + 1)
+
+        if 0 <= b_index - self.dx < total_block:
+            index_list.append(b_index - self.dx)
+
+        if 0 <= b_index + self.dx < total_block:
+            index_list.append(b_index + self.dx)
+
+        if 0 <= b_index - self.dx * self.dy < total_block:
+            index_list.append(b_index - self.dx * self.dy)
+
+        if 0 <= b_index + self.dx * self.dy < total_block:
+            index_list.append(b_index + self.dx * self.dy)
+
+        return index_list
+
+    def isAdjacent(self, b_index1, b_index2):
+
+        pass
+
+    # 计算combine分数, 返回值：value, new_bb_box
+    def calCombineValue(self, b1_dict, b2_dict):
+        # 计算AABB
+        b1_size = b1_dict["size"]
+        b1_bb_min = [b1_dict["pos"][0] - b1_dict["size"][0] / 2,
+                     b1_dict["pos"][1] - b1_dict["size"][1] / 2,
+                     b1_dict["pos"][2] - b1_dict["size"][2] / 2]
+        b1_bb_max = [b1_dict["pos"][0] + b1_dict["size"][0] / 2,
+                     b1_dict["pos"][1] + b1_dict["size"][1] / 2,
+                     b1_dict["pos"][2] + b1_dict["size"][2] / 2]
+
+        b2_size = b2_dict["size"]
+        b2_bb_min = [b2_dict["pos"][0] - b2_dict["size"][0] / 2,
+                     b2_dict["pos"][1] - b2_dict["size"][1] / 2,
+                     b2_dict["pos"][2] - b2_dict["size"][2] / 2]
+        b2_bb_max = [b2_dict["pos"][0] + b2_dict["size"][0] / 2,
+                     b2_dict["pos"][1] + b2_dict["size"][1] / 2,
+                     b2_dict["pos"][2] + b2_dict["size"][2] / 2]
+
+        # new bounding box
+        x_min = min(b1_bb_min[0], b2_bb_min[0])
+        x_max = max(b1_bb_max[0], b2_bb_max[0])
+        box_size_x = x_max - x_min
+        if box_size_x > self.boxMaxSize:
+            return None
+
+        y_min = min(b1_bb_min[1], b2_bb_min[1])
+        y_max = max(b1_bb_max[1], b2_bb_max[1])
+        box_size_y = y_max - y_min
+        if box_size_y > self.boxMaxSize:
+            return None
+
+        z_min = min(b1_bb_min[2], b2_bb_min[2])
+        z_max = max(b1_bb_max[2], b2_bb_max[2])
+        box_size_z = z_max - z_min
+        if box_size_z > self.boxMaxSize:
+            return None
+
+        bb_new_min = [x_min, y_min, z_min]
+        bb_new_max = [x_max, y_max, z_max]
+
+        # 合并后的node总数和density
+        new_node_total = len(b1_dict["nodes"]) + len(b2_dict["nodes"])
+
+        # 合并后的新体积，以grid_size为单位
+        new_volume = (x_max - x_min) * (y_max - y_min) * (z_max - z_min) / pow(self.voxelSize, 3)
+        new_density = new_node_total / ((x_max - x_min) * (y_max - y_min) * (z_max - z_min) / pow(self.voxelSize, 3))
+        # 引入的体积，以voxel_grid为单位
+        volume_inc = (box_size_x * box_size_y * box_size_z - b1_size[0] * b1_size[1] * b1_size[2] - b2_size[0] *
+                      b2_size[1] * b2_size[2]) / pow(self.voxelSize, 3)
+
+        if volume_inc < 0:
+            volume_inc = 0
+        # print("---cal score---", new_node_total, new_volume, new_density, volume_inc)
+        # 计算分数 原则，尽可能均化density，同时在阈值范围内获得尽可能大的block体积
+        # 密度值的相近度
+        # print("---cal score: ---", abs(new_density - self.blockDensityThreshold))
+
+        score_density = 1 / (pow(2, abs(new_density - self.blockDensityThreshold)))
+        score_volume_inc = volume_inc / new_volume
+
+        return score_density + score_volume_inc
+
+    def combineBB(self, b1_dict, b2_dict):
+        # 计算AABB
+        b1_bb_min = [b1_dict["pos"][0] - b1_dict["size"][0] / 2,
+                     b1_dict["pos"][1] - b1_dict["size"][1] / 2,
+                     b1_dict["pos"][2] - b1_dict["size"][2] / 2]
+        b1_bb_max = [b1_dict["pos"][0] + b1_dict["size"][0] / 2,
+                     b1_dict["pos"][1] + b1_dict["size"][1] / 2,
+                     b1_dict["pos"][2] + b1_dict["size"][2] / 2]
+
+        b2_bb_min = [b2_dict["pos"][0] - b2_dict["size"][0] / 2,
+                     b2_dict["pos"][1] - b2_dict["size"][1] / 2,
+                     b2_dict["pos"][2] - b2_dict["size"][2] / 2]
+        b2_bb_max = [b2_dict["pos"][0] + b2_dict["size"][0] / 2,
+                     b2_dict["pos"][1] + b2_dict["size"][1] / 2,
+                     b2_dict["pos"][2] + b2_dict["size"][2] / 2]
+
+        # new bounding box
+        x_min = min(b1_bb_min[0], b2_bb_min[0])
+        x_max = max(b1_bb_max[0], b2_bb_max[0])
+        box_size_x = x_max - x_min
+        # if box_size_x > self.boxMaxSize:
+        #     return None, "BB out of size"
+
+        y_min = min(b1_bb_min[1], b2_bb_min[1])
+        y_max = max(b1_bb_max[1], b2_bb_max[1])
+        box_size_y = y_max - y_min
+        # if box_size_y > self.boxMaxSize:
+        #     return None, "BB out of size"
+
+        z_min = min(b1_bb_min[2], b2_bb_min[2])
+        z_max = max(b1_bb_max[2], b2_bb_max[2])
+        box_size_z = z_max - z_min
+        # if box_size_z > self.boxMaxSize:
+        #     return None, "BB out of size"
+
+        # 计算新BB
+        # | 并集运算  - 差集运算
+        new_bb_nodes = b1_dict["nodes"] | b2_dict["nodes"]
+        new_combined_id = b1_dict["combined_id"] | b2_dict["combined_id"]
+        new_adjacent_id = (b1_dict["adjacent_id"] | b2_dict["adjacent_id"]) - new_combined_id
+
+        new_bb_dict = {
+            "pos": [(x_min + x_max) / 2, (y_min + y_max) / 2, (z_min + z_max) / 2],
+            "size": [box_size_x, box_size_y, box_size_z],
+            "nodes": new_bb_nodes,
+            "combined_id": new_combined_id,
+            "adjacent_id": new_adjacent_id
+        }
+        return new_bb_dict
+
+    # 获取最大value值的dict
+    def getMaxValueDict(self, pv_dict):
+        max_value = -1
+        max_pv = None
+        for pv, value in pv_dict.items():
+            if value > max_value:
+                max_pv = pv
+                max_value = value
+        return max_pv, max_value
+
+    # crop之后进行bounding box的combine操作
     def voxelCropAndCombine(self, box_padding=5):
+        print("-----start compute voxel grid------")
         # 计算AABB
         x_min = self.swcNodes[0]["x"]
         x_max = self.swcNodes[0]["x"]
@@ -267,54 +396,143 @@ class VoxelCropHandler:
         z_min = z_min - box_padding
         z_max = z_max + box_padding
 
-        dx = (x_max - x_min) // self.voxelSize + 1
-        dy = (y_max - y_min) // self.voxelSize + 1
-        dz = (z_max - z_min) // self.voxelSize + 1
+        dx = int((x_max - x_min) // self.voxelSize + 1)
+        dy = int((y_max - y_min) // self.voxelSize + 1)
+        dz = int((z_max - z_min) // self.voxelSize + 1)
 
         self.dx = dx
         self.dy = dy
         self.dz = dz
+        self.blockDensityThreshold = round(len(self.swcNodes) / (self.dx * self.dy * self.dz), 2)
 
         voxel_grid = {}
         for node in self.swcNodes:
             # 计算index
-            hx = (node["x"] - x_min) // self.voxelSize
-            hy = (node["y"] - y_min) // self.voxelSize
-            hz = (node["z"] - z_min) // self.voxelSize
-
+            hx = int((node["x"] - x_min) // self.voxelSize)
+            hy = int((node["y"] - y_min) // self.voxelSize)
+            hz = int((node["z"] - z_min) // self.voxelSize)
             grid_index = hx + hy * dx + hz * dx * dy
+
             if str(grid_index) in voxel_grid:
-                voxel_grid[str(grid_index)]["nodes"].append(node["idx"])
+                voxel_grid[str(grid_index)]["nodes"].add(node["idx"])
             else:
                 grid_pos = [
                     x_min + hx * self.voxelSize + self.voxelSize / 2,
                     y_min + hy * self.voxelSize + self.voxelSize / 2,
                     z_min + hz * self.voxelSize + self.voxelSize / 2,
                 ]
+
+                # adjacent id用于保存临近的，未曾合并的grid id
+                # combined id用于保存已经合并的 grid id
                 voxel_grid[str(grid_index)] = {
                     "pos": grid_pos,
                     "size": [self.voxelSize, self.voxelSize, self.voxelSize],
-                    "nodes": [node["idx"]],
-                    "combined": False
+                    "nodes": {node["idx"]},
+                    "adjacent_id": set({}),
+                    "combined_id": set({})
                 }
 
-        # todo block combine
-        idx_all_list = voxel_grid.keys()
+        print("voxel size:", self.voxelSize)
+        print("total voxels:", len(voxel_grid))
 
+        """------------------------------block combine----------------------------------"""
+        print("-----start block combine------")
+        # todo block combine
+        # pair value dict
+        pv_dict = {}
+
+        # step1 计算block node数量和前景密度，邻接grid_list
+        # 复杂度O(n^2)有优化空间
+        print("======step1 initial pv_dict && combined_bb_dict======")
+        idx_all_list = voxel_grid.keys()
         for grid_idx, value in voxel_grid.items():
             adj_index_list = self.getAdjacentList(int(grid_idx))
             for adj_idx in adj_index_list:
                 if str(adj_idx) in idx_all_list:
-                    # 邻近的block在列表中
+                    # 初始化邻接grid index，集合添加运算
+                    voxel_grid[grid_idx]["adjacent_id"].add(adj_idx)
 
-                    pass
-                pass
-        #
+                    # 初始化pair--value对
+                    if int(grid_idx) < adj_idx:
+                        pair_name = str(grid_idx) + "_" + str(adj_idx)
+                    else:
+                        pair_name = str(adj_idx) + "_" + str(grid_idx)
+
+                    # 计算邻接block的合并value
+                    if pair_name not in pv_dict.keys():
+                        score = self.calCombineValue(voxel_grid[grid_idx], voxel_grid[str(adj_idx)])
+                        if score is not None:
+                            pv_dict[pair_name] = score
+
+        print("initial len of pv_dict:", len(pv_dict))
+
+        combined_bb_dict = copy.deepcopy(voxel_grid)
+        # 全局的id计数器，用于给合并后的bb命名
+        bb_id_cnt = self.dx * self.dy * self.dz + 1
+
+        # 循环终止条件 无可合并价值的block
+        print("======step2 start combine======")
+        iter_cnt = 0
+        while len(pv_dict) > 0:
+            max_pv, max_value = self.getMaxValueDict(pv_dict)
+            print("iter cnt:", iter_cnt, "---", "pv:", max_pv, "---", "value:", max_value)
+            # 合并
+            old_bb1_idx, old_bb2_idx = max_pv.split("_")
+            new_dict = self.combineBB(combined_bb_dict[old_bb1_idx], combined_bb_dict[old_bb2_idx])
+
+            # 新bb的id
+            new_bb_id = str(bb_id_cnt)
+            bb_id_cnt += 1
+
+            # 更新combined bb dict
+            combined_bb_dict[new_bb_id] = new_dict
+            combined_bb_dict.pop(old_bb1_idx)
+            combined_bb_dict.pop(old_bb2_idx)
+            print("iter cnt:", iter_cnt, "---", "new bb id:", new_bb_id)
+
+            # 更新pv dict
+            # 删除直接相连的pv
+            pv_dict.pop(max_pv)
+            tmp_pv_dict = copy.deepcopy(pv_dict)
+
+            for pv in pv_dict.keys():
+                # 更新邻近的pv
+                pv_list = pv.split("_")
+                # 邻接关系，计算全新的
+                if old_bb1_idx in pv_list or old_bb2_idx in pv_list:
+                    # 删除相邻的pv
+                    tmp_pv_dict.pop(pv)
+
+                    if pv_list[0] == old_bb1_idx or pv_list[0] == old_bb2_idx:
+                        adj_bb_idx = pv_list[1]
+                    else:
+                        adj_bb_idx = pv_list[0]
+
+                    score = self.calCombineValue(new_dict, combined_bb_dict[adj_bb_idx])
+                    if score is not None:
+                        if int(adj_bb_idx) < int(new_bb_id):
+                            pair_name = str(adj_bb_idx) + "_" + str(new_bb_id)
+                        else:
+                            pair_name = str(new_bb_id) + "_" + str(adj_bb_idx)
+
+                        tmp_pv_dict[pair_name] = score
+
+            del pv_dict
+            pv_dict = tmp_pv_dict
+            print("iter cnt:", iter_cnt, "---", "len pv-dict:", len(pv_dict))
+            iter_cnt += 1
+        # step2 计算 block pair --> combine_value 对
+
+        # step3 选择value最大的pair进行合并，更新block value对
 
         # dict to list处理
-        voxel_grid_list = []
-        for grid_idx, value in voxel_grid.items():
-            voxel_grid_list.append(value)
+        final_bb_list = []
+        for grid_idx, value in combined_bb_dict.items():
+            value_new = {
+                "pos": value["pos"],
+                "size": value["size"],
+                "nodes": list(value["nodes"])
+            }
+            final_bb_list.append(value_new)
 
-        return voxel_grid_list
-        pass
+        return final_bb_list

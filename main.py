@@ -80,8 +80,9 @@ if __name__ == '__main__':
     swc_nodes = SWC.getSWCData()
 
     # crop
-    cropHandler = VoxelCropHandler(swc_nodes, voxel_size=128, box_max_size=256)
-    bb_list = cropHandler.voxelCrop()
+    cropHandler = VoxelCropHandler(swc_nodes, voxel_size=64, box_max_size=512)
+    # bb_list = cropHandler.voxelCrop()
+    bb_list = cropHandler.voxelCropAndCombine()
 
     # 计算baseline
     volume_base, mem_base = calBaseline(SWC.getNodeCnt(), [256, 256, 256])
@@ -100,5 +101,5 @@ if __name__ == '__main__':
         json.dump(SWC.getSWCData(), f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
 
     # 记录bb list信息
-    with open("results/bb_v2.json", 'w') as f:
+    with open("results/bb_v3_1.json", 'w') as f:
         json.dump(bb_list, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
