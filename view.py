@@ -16,3 +16,4 @@ class Viewer:
     # output 2D coordinate
     def getCoordinate(self):
         pass
+
