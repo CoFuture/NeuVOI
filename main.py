@@ -1,5 +1,7 @@
 import copy
 import os
+import random
+
 from utils.swc import SWCReader
 from crop import CropHandler, VoxelCropHandler
 import json
@@ -103,3 +105,20 @@ if __name__ == '__main__':
     # 记录bb list信息
     with open("results/bb_v3_1.json", 'w') as f:
         json.dump(bb_list, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
+
+    # 存一个block中的node 位置信息
+    block_idx = random.randint(0, len(bb_list) - 1)
+    block_data = {"pos": bb_list[block_idx]["pos"], "size": bb_list[block_idx]["size"], 'nodes': []}
+    block_nodes_list = bb_list[block_idx]['nodes']
+
+    for node_idx in block_nodes_list:
+        node_info = swc_nodes[node_idx - 1]
+        block_data["nodes"].append({
+            "idx": node_idx,
+            "pos": [node_info["x"], node_info["y"], node_info["z"]],
+            "radius": node_info["radius"]
+        })
+
+    # 记录bb list信息
+    with open("results/random_block.json", 'w') as f:
+        json.dump(block_data, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
