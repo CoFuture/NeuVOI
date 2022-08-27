@@ -30,17 +30,30 @@ class ProofReading:
             print("method not completed")
 
     def getRotMatrix_PCA(self):
-        pca = PCA(n_components=3)
+        pca = PCA(n_components=2)
         pca.fit(self.block_data)
 
         component_matrix = pca.components_.T
         print("pca components:", pca.components_.T)
         print("pca variance_ratio:", pca.explained_variance_ratio_)
 
+        # 计算特征平面的法向量
+        eigenvector1 = pca.components_[0]
+        eigenvector2 = pca.components_[1]
+        print("eigen matrix", pca.components_)
+        print("eigen vector", eigenvector1, eigenvector2)
+
+        norm_vector = np.cross(eigenvector1, eigenvector2)
+        print("norm vector", norm_vector)
+
         data_new = pca.transform(self.block_data)
         # 可视化测试
-        # self.plot_figs(1, 30, 20, component_matrix)
-        self.plot_2d_figs(data_new)
+        self.plot_figs(1, 30, 20, component_matrix)
+        # self.plot_2d_figs(data_new)
+        pass
+
+    # 通过遍历投影计算获得旋转矩阵
+    def getRotMatrix_Projection(self):
         pass
 
     def plot_2d_figs(self, data_new):
