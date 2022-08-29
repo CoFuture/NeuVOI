@@ -475,7 +475,7 @@ class VoxelCropHandler:
         iter_cnt = 0
         while len(pv_dict) > 0:
             max_pv, max_value = self.getMaxValueDict(pv_dict)
-            print("iter cnt:", iter_cnt, "---", "pv:", max_pv, "---", "value:", max_value)
+            # print("iter cnt:", iter_cnt, "---", "pv:", max_pv, "---", "value:", max_value)
             # 合并
             old_bb1_idx, old_bb2_idx = max_pv.split("_")
             new_dict = self.combineBB(combined_bb_dict[old_bb1_idx], combined_bb_dict[old_bb2_idx])
@@ -488,7 +488,7 @@ class VoxelCropHandler:
             combined_bb_dict[new_bb_id] = new_dict
             combined_bb_dict.pop(old_bb1_idx)
             combined_bb_dict.pop(old_bb2_idx)
-            print("iter cnt:", iter_cnt, "---", "new bb id:", new_bb_id)
+            # print("iter cnt:", iter_cnt, "---", "new bb id:", new_bb_id)
 
             # 更新pv dict
             # 删除直接相连的pv
@@ -519,7 +519,7 @@ class VoxelCropHandler:
 
             del pv_dict
             pv_dict = tmp_pv_dict
-            print("iter cnt:", iter_cnt, "---", "len pv-dict:", len(pv_dict))
+            # print("iter cnt:", iter_cnt, "---", "len pv-dict:", len(pv_dict))
             iter_cnt += 1
         # step2 计算 block pair --> combine_value 对
 
