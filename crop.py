@@ -286,7 +286,7 @@ class VoxelCropHandler:
 
         # 合并后的新体积，以grid_size为单位
         new_volume = (x_max - x_min) * (y_max - y_min) * (z_max - z_min) / pow(self.voxelSize, 3)
-        new_density = new_node_total / ((x_max - x_min) * (y_max - y_min) * (z_max - z_min) / pow(self.voxelSize, 3))
+        new_density = round(new_node_total / ((x_max - x_min) * (y_max - y_min) * (z_max - z_min) / pow(self.voxelSize, 3)), 2)
         # 引入的体积，以voxel_grid为单位
         volume_inc = (box_size_x * box_size_y * box_size_z - b1_size[0] * b1_size[1] * b1_size[2] - b2_size[0] *
                       b2_size[1] * b2_size[2]) / pow(self.voxelSize, 3)

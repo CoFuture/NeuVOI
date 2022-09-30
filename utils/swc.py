@@ -13,7 +13,7 @@ class SWCReader:
             # 只读取info，不需要注释信息
             for node_info in content:
                 if node_info[0] == "#":
-                    print("get annotation, skipped")
+                    # print("get annotation, skipped")
                     continue
 
                 node_info = (node_info.strip()).split()

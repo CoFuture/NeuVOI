@@ -106,6 +106,7 @@ if __name__ == '__main__':
     with open("results/bb_v3_1.json", 'w') as f:
         json.dump(bb_list, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
 
+    """随机选一个block 用于展示"""
     # 存一个block中的node 位置信息
     block_idx = random.randint(0, len(bb_list) - 1)
     block_data = {"pos": bb_list[block_idx]["pos"], "size": bb_list[block_idx]["size"], 'nodes': []}
