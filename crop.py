@@ -286,7 +286,7 @@ class VoxelCropHandler:
 
         # 合并后的新体积，以grid_size为单位
         new_volume = (x_max - x_min) * (y_max - y_min) * (z_max - z_min) / pow(self.voxelSize, 3)
-        new_density = round(new_node_total / ((x_max - x_min) * (y_max - y_min) * (z_max - z_min) / pow(self.voxelSize, 3)), 2)
+        new_density = round((new_node_total / ((x_max - x_min) * (y_max - y_min) * (z_max - z_min) / pow(self.voxelSize, 3))), 2)
         # 引入的体积，以voxel_grid为单位
         volume_inc = (box_size_x * box_size_y * box_size_z - b1_size[0] * b1_size[1] * b1_size[2] - b2_size[0] *
                       b2_size[1] * b2_size[2]) / pow(self.voxelSize, 3)
@@ -298,9 +298,16 @@ class VoxelCropHandler:
         # 密度值的相近度
         # print("---cal score: ---", abs(new_density - self.blockDensityThreshold))
 
-        score_density = 1 / (pow(2, abs(new_density - self.blockDensityThreshold)))
-        score_volume_inc = volume_inc / new_volume
+        densityDiff = round(abs(new_density - self.blockDensityThreshold), 2)
+        # print("+++density diff+++", new_density, self.blockDensityThreshold, densityDiff)
+        if densityDiff > 20.0:
+            score_density = 0
+        elif densityDiff < 0.1:
+            score_density = 1
+        else:
+            score_density = 1 / (pow(2, densityDiff))
 
+        score_volume_inc = volume_inc / new_volume
         return score_density + score_volume_inc
 
     def combineBB(self, b1_dict, b2_dict):
