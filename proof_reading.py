@@ -1,8 +1,11 @@
+import copy
 import json
 from sklearn.decomposition import PCA
 import numpy as np
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d  # noqa: F401
+from crop import AABBBox
+from utils.swc import SWCReader
 
 
 # input: 3D node data in a block
@@ -91,23 +94,62 @@ class ProofReading:
         plt.show()
 
 
-#
-
 # 可视化测试
 if __name__ == '__main__':
-    with open("results/random_block.json", "r") as f:
-        block_info = json.load(f)
-        # print(block_info)
+    swcReader = SWCReader("results/Img_X_3063.23_Y_11231.3_Z_4753.32_xpruned_ypruned_spruned.swc")
+    swcData = swcReader.getSWCData()
 
-    b_pos = block_info["pos"]
-    b_size = block_info["size"]
+    # node in a AABB
+    node_list = []
+    # bb
+    bbList = []
+    # 包围盒对象
+    box = None
+    for node in swcData:
+        # 获取node pos
+        node_pos = [node["x"], node["y"], node["z"]]
+        if len(node_list) == 0:
+            # 保存node
+            node_list.append(node["idx"])
+            # 新建一个box
+            box = AABBBox(node_pos, node_pos, size_threshold=[96, 96, 48])
+        else:
+            # 计算 node 加入后的bb
+            if box.addNode(node_pos):
+                # 成功加入box
+                node_list.append(node["idx"])
+            else:
+                # 导出bb
+                bb_center = box.getCenter()
+                bb_info = {
+                    "pos": bb_center,
+                    "size": [96, 96, 48],
+                    "nodes": copy.deepcopy(node_list)
+                }
+                bbList.append(bb_info)
+                # 初始化基础对象
+                node_list = [node["idx"]]
+                # aabb 基本信息
+                del box
+                box = AABBBox(node_pos, node_pos, size_threshold=[96, 96, 48])
 
-    nodes_data_tmp = []
-    for i in range(len(block_info["nodes"])):
-        nodes_data_tmp.append(block_info["nodes"][i]["pos"])
+    with open("RunData/proof_reading_bb.json", 'w') as f:
+        print("--------save proof_reading bb list json----------")
+        json.dump(bbList, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
 
-    nodes_data = np.array(nodes_data_tmp)
-
-    # print(nodes_data.shape)
-    pr = ProofReading(nodes_data, b_pos, b_size, "PCA")
-    pr.getRotMatrix()
+    # with open("results/random_block.json", "r") as f:
+    #     block_info = json.load(f)
+    #     # print(block_info)
+    #
+    # b_pos = block_info["pos"]
+    # b_size = block_info["size"]
+    #
+    # nodes_data_tmp = []
+    # for i in range(len(block_info["nodes"])):
+    #     nodes_data_tmp.append(block_info["nodes"][i]["pos"])
+    #
+    # nodes_data = np.array(nodes_data_tmp)
+    #
+    # # print(nodes_data.shape)
+    # pr = ProofReading(nodes_data, b_pos, b_size, "PCA")
+    # pr.getRotMatrix()

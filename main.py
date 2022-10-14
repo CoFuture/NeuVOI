@@ -53,16 +53,29 @@ def calVoxelGridPerformance(bbList):
 
 if __name__ == '__main__':
     """------------------------version 1.0 segment crop-------------------------"""
-    # swc_path = os.path.join(os.getcwd(), "swc/18454_00158.swc")
-    # SWC = SWCReader(swc_path)
-    # print("filename:", SWC.getSWCFileName())
-    # swc_segments = SWC.getSWCSegments()
-    #
-    # # crop
-    # cropHandler = CropHandler(swc_segments)
-    # bb_list = cropHandler.segmentCropWithFixedBB([256, 256, 256])
-    #
-    # # 计算baseline
+    swc_path = os.path.join(os.getcwd(), "swc/18454_00158.swc")
+    SWC = SWCReader(swc_path)
+    print("filename:", SWC.getSWCFileName())
+    swc_segments = SWC.getSWCSegments()
+
+    # crop
+    cropHandler = CropHandler(swc_segments)
+    bb_list = cropHandler.segmentCropWithFixedBB([256, 256, 256])
+
+    # bb list to json
+    bbListJson = []
+    for sbbList in bb_list:
+        for bb in sbbList:
+            bbData = {
+                "pos": bb["pos"],
+                "size": bb["size"]
+            }
+            bbListJson.append(bbData)
+    with open("RunData/segment_bbs.json", 'w') as f:
+        print("--------save segment bb list json----------")
+        json.dump(bbListJson, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
+
+    # 计算baseline
     # volume_base, mem_base = calBaseline(SWC.getNodeCnt(), [256, 256, 256])
     # volume_optimize, box_cnt = calPerformance(bb_list)
     # print("baseline volume:", volume_base)
@@ -76,50 +89,50 @@ if __name__ == '__main__':
     # print("optimize box cnt", box_cnt)
 
     """------------------------version 2.0 voxel grid crop-------------------------"""
-    swc_path = os.path.join(os.getcwd(), "swc/18454_00158.swc")
-    SWC = SWCReader(swc_path)
-    print("filename:", SWC.getSWCFileName())
-    swc_nodes = SWC.getSWCData()
-
-    # crop
-    cropHandler = VoxelCropHandler(swc_nodes, voxel_size=64, box_max_size=512)
-    # bb_list = cropHandler.voxelCrop()
-    bb_list = cropHandler.voxelCropAndCombine()
-
-    # 计算baseline
-    volume_base, mem_base = calBaseline(SWC.getNodeCnt(), [256, 256, 256])
-    volume_optimize, box_cnt = calVoxelGridPerformance(bb_list)
-    print("baseline volume:", volume_base)
-    print("baseline memory(Byte):", mem_base)
-    print("baseline box cnt", SWC.getNodeCnt())
-
-    print("\n")
-    print("optimize memory(Byte):", volume_optimize)
-    print("optimize memory(Byte):", mem_base)
-    print("optimize box cnt", box_cnt)
-
-    # 记录swc node信息
-    with open("results/swc.json", 'w') as f:
-        json.dump(SWC.getSWCData(), f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
-
-    # 记录bb list信息
-    with open("results/bb_v3_1.json", 'w') as f:
-        json.dump(bb_list, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
+    # swc_path = os.path.join(os.getcwd(), "swc/18454_00158.swc")
+    # SWC = SWCReader(swc_path)
+    # print("filename:", SWC.getSWCFileName())
+    # swc_nodes = SWC.getSWCData()
+    #
+    # # crop
+    # cropHandler = VoxelCropHandler(swc_nodes, voxel_size=64, box_max_size=512)
+    # # bb_list = cropHandler.voxelCrop()
+    # bb_list = cropHandler.voxelCropAndCombine()
+    #
+    # # 计算baseline
+    # volume_base, mem_base = calBaseline(SWC.getNodeCnt(), [256, 256, 256])
+    # volume_optimize, box_cnt = calVoxelGridPerformance(bb_list)
+    # print("baseline volume:", volume_base)
+    # print("baseline memory(Byte):", mem_base)
+    # print("baseline box cnt", SWC.getNodeCnt())
+    #
+    # print("\n")
+    # print("optimize memory(Byte):", volume_optimize)
+    # print("optimize memory(Byte):", mem_base)
+    # print("optimize box cnt", box_cnt)
+    #
+    # # 记录swc node信息
+    # with open("results/swc.json", 'w') as f:
+    #     json.dump(SWC.getSWCData(), f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
+    #
+    # # 记录bb list信息
+    # with open("results/bb_v3_1.json", 'w') as f:
+    #     json.dump(bb_list, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
 
     """随机选一个block 用于展示"""
-    # 存一个block中的node 位置信息
-    block_idx = random.randint(0, len(bb_list) - 1)
-    block_data = {"pos": bb_list[block_idx]["pos"], "size": bb_list[block_idx]["size"], 'nodes': []}
-    block_nodes_list = bb_list[block_idx]['nodes']
-
-    for node_idx in block_nodes_list:
-        node_info = swc_nodes[node_idx - 1]
-        block_data["nodes"].append({
-            "idx": node_idx,
-            "pos": [node_info["x"], node_info["y"], node_info["z"]],
-            "radius": node_info["radius"]
-        })
-
-    # 记录bb list信息
-    with open("results/random_block.json", 'w') as f:
-        json.dump(block_data, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
+    # # 存一个block中的node 位置信息
+    # block_idx = random.randint(0, len(bb_list) - 1)
+    # block_data = {"pos": bb_list[block_idx]["pos"], "size": bb_list[block_idx]["size"], 'nodes': []}
+    # block_nodes_list = bb_list[block_idx]['nodes']
+    #
+    # for node_idx in block_nodes_list:
+    #     node_info = swc_nodes[node_idx - 1]
+    #     block_data["nodes"].append({
+    #         "idx": node_idx,
+    #         "pos": [node_info["x"], node_info["y"], node_info["z"]],
+    #         "radius": node_info["radius"]
+    #     })
+    #
+    # # 记录bb list信息
+    # with open("results/random_block.json", 'w') as f:
+    #     json.dump(block_data, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行

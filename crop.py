@@ -1,4 +1,5 @@
 import copy
+import json
 
 
 # 包围盒的基本操作
@@ -441,6 +442,18 @@ class VoxelCropHandler:
 
         print("voxel size:", self.voxelSize)
         print("total voxels:", len(voxel_grid))
+
+        # save voxel grid file
+        gridList = []
+        for index, grid in voxel_grid.items():
+            grid_data = {
+                "pos": grid["pos"],
+                "size": grid["size"]
+            }
+            gridList.append(grid_data)
+        with open("RunData/voxel_grid.json", 'w') as f:
+            print("------save grid data------")
+            json.dump(gridList, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
 
         """------------------------------block combine----------------------------------"""
         print("-----start block combine------")
