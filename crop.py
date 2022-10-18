@@ -283,6 +283,10 @@ class VoxelCropHandler:
         bb_new_min = [x_min, y_min, z_min]
         bb_new_max = [x_max, y_max, z_max]
 
+        # 优先合并孤立的voxel
+        if b1_size == [self.voxelSize, self.voxelSize, self.voxelSize] or b2_size == [self.voxelSize, self.voxelSize, self.voxelSize]:
+            return 2
+
         # 合并后的node总数和density
         new_node_total = len(b1_dict["nodes"]) + len(b2_dict["nodes"])
 
@@ -292,6 +296,7 @@ class VoxelCropHandler:
         # 引入的体积，以voxel_grid为单位
         volume_inc = (box_size_x * box_size_y * box_size_z - b1_size[0] * b1_size[1] * b1_size[2] - b2_size[0] *
                       b2_size[1] * b2_size[2]) / pow(self.voxelSize, 3)
+
 
         if volume_inc < 0:
             volume_inc = 0
@@ -743,11 +748,10 @@ class VoxelCropHandler:
         while len(pv_dict) > 0:
 
             max_pv, max_value = self.getMaxValueDict(pv_dict)
-            # print("iter cnt:", iter_cnt, "---", "pv:", max_pv, "---", "value:", max_value)
             # 合并
             old_bb1_idx, old_bb2_idx = max_pv.split("_")
             # new_dict = self.combineBB(combined_bb_dict[old_bb1_idx], combined_bb_dict[old_bb2_idx])
-            print("iter count", iter_cnt, bb_id_cnt, max_pv)
+            print("------------------iter count", iter_cnt, bb_id_cnt, max_pv, "--------------------")
 
             """combine bb dict"""
             b1_dict = combined_bb_dict[str(old_bb1_idx)]
@@ -805,13 +809,11 @@ class VoxelCropHandler:
             adjacent_id_set = b1_dict["adjacent_id"] | b2_dict["adjacent_id"]
             print(str(old_bb1_idx), " adjacent", b1_dict["adjacent_id"])
             print(str(old_bb2_idx), " adjacent", b2_dict["adjacent_id"])
-            print("adjacent id set1", adjacent_id_set)
 
             adjacent_id_set = adjacent_id_set - {int(old_bb1_idx), int(old_bb2_idx)}
 
             # 隐藏的adjacent和合并的处理
             combinedIdxSet = set({})
-            print("adjacent id set2", adjacent_id_set)
 
             for adj_idx in adjacent_id_set:
                 # 包围盒检测
@@ -825,28 +827,32 @@ class VoxelCropHandler:
                 newBoxYRange = [y_min, y_max]
                 newBoxZRange = [z_min, z_max]
 
-                xCrossed = True
-                yCrossed = True
-                zCrossed = True
+                xContained = False
+                yContained = False
+                zContained = False
 
-                if adjBoxXRange[0] > newBoxXRange[1] or adjBoxXRange[1] < newBoxXRange[0]:
-                    xCrossed = False
+                if adjBoxXRange[0] >= newBoxXRange[0] and adjBoxXRange[1] <= newBoxXRange[1]:
+                    xContained = True
 
-                if adjBoxYRange[0] > newBoxYRange[1] or adjBoxYRange[1] < newBoxYRange[0]:
-                    yCrossed = False
+                if adjBoxYRange[0] >= newBoxYRange[0] and adjBoxYRange[1] <= newBoxYRange[1]:
+                    yContained = True
 
-                if adjBoxZRange[0] > newBoxZRange[1] or adjBoxZRange[1] < newBoxZRange[0]:
-                    zCrossed = False
+                if adjBoxZRange[0] >= newBoxZRange[0] and adjBoxZRange[1] <= newBoxZRange[1]:
+                    zContained = True
 
-                if xCrossed and yCrossed and zCrossed:
+                if xContained and yContained and zContained:
                     # 包含在其中, 记录
                     combinedIdxSet.add(adj_idx)
-                    print("==add to combine set===", adj_idx)
+                    # print("==add to combine set===", adj_idx)
 
             # 新的邻接index集合 遍历combinedSet
             # 被combined id set
             combinedIdxSet = combinedIdxSet | {int(old_bb1_idx), int(old_bb2_idx)}
             print("need to combine id set", combinedIdxSet)
+
+            # 新bb的id
+            new_bb_id = str(bb_id_cnt)
+            bb_id_cnt += 1
 
             # 计算combined voxel list
             combined_id_set = set({})
@@ -858,7 +864,19 @@ class VoxelCropHandler:
                 nodes_id_set = nodes_id_set | combined_bb_dict[str(c_id)]["nodes"]
 
             adjacent_id_set = adjacent_id_set - combinedIdxSet
-            print("new adjacent id set", adjacent_id_set)
+
+            print("-----generate dict adjacnet id set-----", adjacent_id_set)
+            print("-----generate dict combined id set-----", combined_id_set)
+
+            # 反向更新邻接关系
+            for adj_idx in adjacent_id_set:
+                # 更新邻接关系map 删除pv
+                adj_idx = str(adj_idx)
+                raw_adjacent_id_list = combined_bb_dict[adj_idx]["adjacent_id"]
+                new_adjacent_id_list = raw_adjacent_id_list - combinedIdxSet
+                new_adjacent_id_list.add(int(new_bb_id))
+                combined_bb_dict[adj_idx]["adjacent_id"] = new_adjacent_id_list
+                print("-----update", adj_idx, "adjacent set-----", new_adjacent_id_list)
 
             """生成新的bb"""
             new_bb_dict = {
@@ -870,9 +888,7 @@ class VoxelCropHandler:
                 "adjacent_id": adjacent_id_set
             }
 
-            # 新bb的id
-            new_bb_id = str(bb_id_cnt)
-            bb_id_cnt += 1
+
 
             # 更新combined bb dict
             combined_bb_dict[new_bb_id] = new_bb_dict
@@ -882,8 +898,6 @@ class VoxelCropHandler:
             # 清除combined bb dict
             for c_id in combinedIdxSet:
                 combined_bb_dict.pop(str(c_id))
-                if c_id == 314114:
-                    print("aaa")
             # print("iter cnt:", iter_cnt, "---", "new bb id:", new_bb_id)
 
             """更新 pv dict"""
@@ -896,17 +910,16 @@ class VoxelCropHandler:
                 pv_list = pv.split("_")
                 # 删除直接相连的pv
                 if int(pv_list[0]) in combinedIdxSet:
-                    # print("delete pv", pv)
+                    print("-----delete pv-----", pv)
                     tmp_pv_dict.pop(pv)
                     if int(pv_list[1]) in combinedIdxSet:
-
                         continue
                     else:
                         # 正常处理
                         adj_bb_idx = pv_list[1]
                         cob_bb_idx = pv_list[0]
                 elif int(pv_list[1]) in combinedIdxSet:
-                    # print("delete pv", pv)
+                    print("-----delete pv-----", pv)
                     tmp_pv_dict.pop(pv)
                     if int(pv_list[0]) in combinedIdxSet:
                         continue
@@ -916,15 +929,6 @@ class VoxelCropHandler:
                         cob_bb_idx = pv_list[1]
                 else:
                     continue
-
-                # if pv_list[0] == "280729" and pv_list[1] == "280824":
-                #     print("aaaa")
-
-                # 更新邻接关系map 删除pv
-                raw_adjacent_id_list = combined_bb_dict[adj_bb_idx]["adjacent_id"]
-                new_adjacent_id_list = raw_adjacent_id_list - {int(cob_bb_idx)}
-                new_adjacent_id_list.add(int(new_bb_id))
-                combined_bb_dict[adj_bb_idx]["adjacent_id"] = new_adjacent_id_list
 
                 score = self.calCombineValue(new_bb_dict, combined_bb_dict[adj_bb_idx])
                 if score is not None:

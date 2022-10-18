@@ -4,6 +4,7 @@ import random
 
 from utils.swc import SWCReader
 from crop import CropHandler, VoxelCropHandler
+from voxel_crop import VoxelCrop
 import json
 
 
@@ -95,9 +96,11 @@ if __name__ == '__main__':
     swc_nodes = SWC.getSWCData()
 
     # crop
-    cropHandler = VoxelCropHandler(swc_nodes, voxel_size=64, box_max_size=512)
+    # cropHandler = VoxelCropHandler(swc_nodes, voxel_size=64, box_max_size=512)
+    cropHandler = VoxelCrop(swc_nodes, voxel_size=64, box_max_size=512)
+    cropHandler.voxelCropAndCombineNew()
     # bb_list = cropHandler.voxelCrop()
-    bb_list = cropHandler.voxelCropAndCombineNew()
+    bb_list = cropHandler.getBBList()
 
     # 计算baseline
     volume_base, mem_base = calBaseline(SWC.getNodeCnt(), [256, 256, 256])
