@@ -10,7 +10,7 @@ class Voxel:
         self.z = z
         self.index = index
 
-        self.size = size
+        self.size = [size, size, size]
 
         if pos is None:
             pos = [0, 0, 0]
@@ -54,18 +54,29 @@ class BoundingBox:
         self.adjacentDict = {}
         self.containedVoxelDict = {}
 
+    def getVoxelSize(self):
+        tempVoxelKey = tuple(self.containedVoxelDict.keys())[0]
+        voxel = self.containedVoxelDict[tempVoxelKey]
+        v_size = voxel.size[0]
+
+        final_size = int(self.size[0] / v_size) * int(self.size[1] / v_size) * int(self.size[2] / v_size)
+        return final_size
+
     def addAdjacent(self, bb):
         if bb.index not in self.adjacentDict.keys():
             self.adjacentDict[bb.index] = bb
 
     def getAdjacentIndexSet(self):
         adjSet = set({})
-        for adj_id, bb in self.adjacentDict.keys():
+        for adj_id in self.adjacentDict.keys():
             adjSet.add(adj_id)
         return adjSet
 
     def getAllVoxel(self):
         return self.containedVoxelDict
+
+    def getAllVoxelIdxSet(self):
+        return set(self.containedVoxelDict.keys())
 
     def addVoxel(self, voxel):
         if voxel.index not in self.containedVoxelDict.keys():
@@ -78,7 +89,7 @@ class BoundingBox:
 
     def getNodes(self):
         nodesList = []
-        for v_idx, voxel in self.containedVoxelDict.keys():
+        for v_idx, voxel in self.containedVoxelDict.items():
             nodesList.extend(voxel.getNodes())
         return nodesList
 
@@ -98,12 +109,14 @@ class PairBB:
 
 
 class VoxelCrop:
-    def __init__(self, swc_nodes, voxel_size=64, box_max_size=512):
+    def __init__(self, swc_nodes, voxel_size=64, box_max_size=512, zero_overlap=False):
         self.swcNodes = swc_nodes
 
         # voxel grid相关参数
         self.voxelSize = voxel_size
         self.boxMaxSize = box_max_size
+        # zero overlap
+        self.zero_overlap = zero_overlap
 
         # voxel划分信息
         self.dx = -1
@@ -143,25 +156,49 @@ class VoxelCrop:
 
         return voxel_index_list
 
-    # 检查是否有overlap
+    # 检查是否有overlap，输出范围内的hidden voxel id set和overlap id set
     # input： pmin pmax exclusive_set{}
     # output: overlap voxel set
-    def checkOverlap(self, pmin, pmax, exclusive_voxel_set, exclusive_block_id):
+    def checkHiddenAndOverlap(self, pmin, pmax, exclusive_voxel_idx_set):
         # overlap不考虑自身已有的
         allVoxelKeysSet = set(self.voxelDict.keys())
-        scanVoxelKeySet = allVoxelKeysSet - exclusive_voxel_set
+        scanVoxelKeySet = allVoxelKeysSet - exclusive_voxel_idx_set
+
+        # 隐藏的 voxel/block set
+        hiddenBlockIndexSet = set({})
+        hiddenVoxelIndexSet = set({})
+
+        potentialOverlapIndexDict = {}
+
+        # 被其他block 索引的voxel 存在overlap
+        overlapVoxelIndexSet = set({})
 
         for v_idx in scanVoxelKeySet:
             voxel = self.voxelDict[v_idx]
-            # 判断voxel是否indexed by其他block
             voxel_position = voxel.position
             if pmin[0] < voxel_position[0] < pmax[0] and pmin[1] < voxel_position[1] < pmax[1] and pmin[2] < voxel_position[2] < pmax[2]:
                 indexedSet = voxel.getInverseIndexSet()
+                # 按照bb idx重新整理
+                for bb_idx in indexedSet:
+                    if bb_idx in potentialOverlapIndexDict:
+                        potentialOverlapIndexDict[bb_idx].add(v_idx)
+                    else:
+                        potentialOverlapIndexDict[bb_idx] = set({})
 
+        # 判断是否完全包含其他block
+        for bb_idx, voxel_set in potentialOverlapIndexDict.items():
+            bb = self.bbDict[bb_idx]
+            bb_all_voxel_set = bb.getAllVoxelIdxSet()
+            if len(bb_all_voxel_set - voxel_set) == 0:
+                # 完全包含
+                hiddenBlockIndexSet.add(bb_idx)
+                for v_idx in voxel_set:
+                    hiddenVoxelIndexSet.add(v_idx)
+            else:
+                for v_idx in voxel_set:
+                    overlapVoxelIndexSet.add(v_idx)
 
-
-
-        pass
+        return hiddenBlockIndexSet, hiddenVoxelIndexSet, overlapVoxelIndexSet
 
     # 计算combine分数, 返回值：value, new_bb_box
     def calCombineValue(self, bb1, bb2):
@@ -192,46 +229,85 @@ class VoxelCrop:
         x_max = max(bb1_pmax[0], bb2_pmax[0])
         box_size_x = x_max - x_min
         if box_size_x > self.boxMaxSize:
-            return None
+            return None, None, None
 
         y_min = min(bb1_pmin[1], bb2_pmin[1])
         y_max = max(bb1_pmax[1], bb2_pmax[1])
         box_size_y = y_max - y_min
         if box_size_y > self.boxMaxSize:
-            return None
+            return None, None, None
 
         z_min = min(bb1_pmin[2], bb2_pmin[2])
         z_max = max(bb1_pmax[2], bb2_pmax[2])
         box_size_z = z_max - z_min
         if box_size_z > self.boxMaxSize:
-            return None
+            return None, None, None
 
         bb_new_min = [x_min, y_min, z_min]
         bb_new_max = [x_max, y_max, z_max]
 
+        # 检查overlap
+        bb1_voxel_idx_set = bb1.getAllVoxelIdxSet()
+        bb2_voxel_idx_set = bb2.getAllVoxelIdxSet()
+        exclusive_voxel_idx_set = bb1_voxel_idx_set | bb2_voxel_idx_set
+        hiddenBlockIdxSet, hiddenVoxelIdxSet, overlapVoxelIdxSet = self.checkHiddenAndOverlap(bb_new_min, bb_new_max, exclusive_voxel_idx_set)
+
         # 极端一点zero overlap
+        if self.zero_overlap and len(overlapVoxelIdxSet) != 0:
+            return None, hiddenVoxelIdxSet, overlapVoxelIdxSet
 
         # 其他参数阈值：block内总的node数量
-        # 正相关参数：含有孤立voxel，接近新的
+        # 正相关参数：包含孤立voxel的个数，接近整体block density的程度
         # 负相关参数：overlap，
 
         # 优先合并孤立的voxel
-        if b1_size == [self.voxelSize, self.voxelSize, self.voxelSize] or b2_size == [self.voxelSize, self.voxelSize,
-                                                                                      self.voxelSize]:
-            return 2
+        if len(bb1_voxel_idx_set) == 1 or len(bb2_voxel_idx_set) == 1:
+            # if len(bb1_voxel_idx_set) == 1 and len(bb2_voxel_idx_set) == 1:
+            #     priority_score = 1
+            # else:
+            #     priority_score = 0.5
+            priority_score = 1
+        else:
+            # 优先合并小的voxel
+            bb1_voxel_size = int(bb1_size[0] / self.voxelSize) * int(bb1_size[1] / self.voxelSize) * int(bb1_size[2] / self.voxelSize)
+            bb2_voxel_size = int(bb2_size[0] / self.voxelSize) * int(bb2_size[1] / self.voxelSize) * int(bb2_size[2] / self.voxelSize)
+
+            threshold = int(self.boxMaxSize / self.voxelSize)
+
+            if bb1_voxel_size < threshold or bb2_voxel_size < threshold:
+                priority_score = 0.5
+            else:
+                priority_score = 0
+
+        if len(hiddenVoxelIdxSet) > len(overlapVoxelIdxSet):
+            hidden_score = 1.5
+        elif len(hiddenVoxelIdxSet) == len(overlapVoxelIdxSet):
+            hidden_score = 0
+        else:
+            hidden_score = -1.5
 
         # 合并后的node总数和density
-        new_node_total = len(b1_dict["nodes"]) + len(b2_dict["nodes"])
+        new_node_total = len(bb1.getNodes()) + len(bb2.getNodes())
+        for v_id in hiddenVoxelIdxSet:
+            voxel = self.voxelDict[v_id]
+            new_node_total += len(voxel.getNodes())
+
+        for v_id in overlapVoxelIdxSet:
+            voxel = self.voxelDict[v_id]
+            new_node_total += len(voxel.getNodes())
 
         # 合并后的新体积，以grid_size为单位
         new_volume = round((x_max - x_min) * (y_max - y_min) * (z_max - z_min) / pow(self.voxelSize, 3))
         new_density = round(new_node_total / new_volume, 2)
-        # 引入的体积，以voxel_grid为单位
-        volume_inc = (box_size_x * box_size_y * box_size_z - b1_size[0] * b1_size[1] * b1_size[2] - b2_size[0] *
-                      b2_size[1] * b2_size[2]) / pow(self.voxelSize, 3)
 
-        if volume_inc < 0:
-            volume_inc = 0
+        # 引入的体积，以voxel_grid为单位
+        # volume_inc = (box_size_x * box_size_y * box_size_z - bb1[0] * b1_size[1] * b1_size[2] - b2_size[0] *
+        #               b2_size[1] * b2_size[2]) / pow(self.voxelSize, 3)
+        #
+        # if volume_inc < 0:
+        #     volume_inc = 0
+        # score_volume_inc = volume_inc / new_volume
+
         # print("---cal score---", new_node_total, new_volume, new_density, volume_inc)
         # 计算分数 原则，尽可能均化density，同时在阈值范围内获得尽可能大的block体积
         # 密度值的相近度
@@ -240,30 +316,39 @@ class VoxelCrop:
         densityDiff = round(abs(new_density - self.blockDensityThreshold), 2)
         # print("+++density diff+++", new_density, self.blockDensityThreshold, densityDiff)
         if densityDiff > 20.0:
-            score_density = 0
+            density_score = 0
         elif densityDiff < 0.1:
-            score_density = 1
+            density_score = 1
         else:
-            score_density = 1 / (pow(2, densityDiff))
+            density_score = 1 / (pow(2, densityDiff))
 
-        score_volume_inc = volume_inc / new_volume
-        return score_density + score_volume_inc
+        final_score = 2 * priority_score + hidden_score + density_score
+
+        return final_score, hiddenVoxelIdxSet, overlapVoxelIdxSet
 
     # 获取最大value值的dict
     def getMaxScorePair(self):
         if len(self.pairValueDict) == 0:
             return None
 
-        maxPairName = self.pairValueDict.keys()[0]
+        maxPairName = tuple(self.pairValueDict.keys())[0]
         maxPair = self.pairValueDict[maxPairName]
 
+        # iter_cnt = 0
         for p_name, pair in self.pairValueDict.items():
+            # print(iter_cnt, len(self.pairValueDict), p_name)
+            # iter_cnt += 1
+
             if pair.value > maxPair.value:
                 maxPairName = p_name
                 maxPair = pair
+
         return maxPairName, maxPair
 
     def combine(self, bb1_idx, bb2_idx, new_bb_id):
+        if bb1_idx == 111319 or bb2_idx == 111319:
+            print("aaa")
+
         if bb1_idx not in self.bbDict.keys() or bb2_idx not in self.bbDict.keys():
             return
 
@@ -314,20 +399,21 @@ class VoxelCrop:
 
         # adjacent
         oldBBIndexSet = {bb1.index, bb2.index}
-        newAdjSet = bb1.getAdjacentIndexSet | bb2.getAdjacentIndexSet
+        newAdjSet = bb1.getAdjacentIndexSet() | bb2.getAdjacentIndexSet()
         newAdjSet = newAdjSet - oldBBIndexSet
 
         for adj_idx in newAdjSet:
             adj_bb = self.bbDict[adj_idx]
             newBB.addAdjacent(adj_bb)
+            adj_bb.addAdjacent(newBB)
 
             # adj bb删除
             adj_bb.removeAdjacent(bb1.index)
             adj_bb.removeAdjacent(bb2.index)
 
         # addVoxel
-        bb1_voxel = bb1.getAllVoxel
-        bb2_voxel = bb2.getAllVoxel
+        bb1_voxel = bb1.getAllVoxel()
+        bb2_voxel = bb2.getAllVoxel()
 
         for v_id, voxel in bb1_voxel.items():
             voxel.removeBBIndex(bb1.index)
@@ -343,7 +429,10 @@ class VoxelCrop:
         self.bbDict.pop(bb2.index)
 
         # 更新pair dict
-        for p_name, pair in self.pairValueDict:
+        addPairPool = {}
+        popPairNameSet = set({})
+
+        for p_name, pair in self.pairValueDict.items():
             pairIndexSet = pair.getBBSet()
             modifyBBSet = pairIndexSet - oldBBIndexSet
 
@@ -352,26 +441,36 @@ class VoxelCrop:
                 # 没有交集
                 continue
             elif len(modifyBBSet) == 1:
-                self.pairValueDict.pop(p_name)
+                # tempPairValueDict.pop(p_name)
+                popPairNameSet.add(p_name)
 
-                modify_bb = self.bbDict[modifyBBSet[0]]
+                modify_bb = self.bbDict[tuple(modifyBBSet)[0]]
                 if newBB.index < modify_bb.index:
                     pair_name = str(newBB.index) + "_" + str(modify_bb.index)
-                    score = self.calCombineValue(modify_bb, newBB)
+                    score, hiddenVoxelIdxSet, overlapVoxelIdxSet = self.calCombineValue(modify_bb, newBB)
                     if score is not None:
                         newPair = PairBB(newBB, modify_bb, score)
-                        self.pairValueDict[pair_name] = newPair
+                        # tempPairValueDict[pair_name] = newPair
+                        addPairPool[pair_name] = newPair
                 else:
                     pair_name = str(modify_bb.index) + "_" + str(newBB.index)
-                    score = self.calCombineValue(modify_bb, newBB)
+                    score, hiddenVoxelIdxSet, overlapVoxelIdxSet = self.calCombineValue(modify_bb, newBB)
                     if score is not None:
                         newPair = PairBB(modify_bb, newBB, score)
-                        self.pairValueDict[pair_name] = newPair
+                        # tempPairValueDict[pair_name] = newPair
+                        addPairPool[pair_name] = newPair
             else:
                 # 删除直接相连的
-                self.pairValueDict.pop(p_name)
+                # tempPairValueDict.pop(p_name)
+                popPairNameSet.add(p_name)
 
-    # crop之后进行bounding box的combine操作
+        # 更新pair value
+        for pop_name in popPairNameSet:
+            self.pairValueDict.pop(pop_name)
+
+        for pname, pair in addPairPool.items():
+            self.pairValueDict[pname] = pair
+
     def voxelCropAndCombineNew(self, box_padding=5):
         print("-----start compute voxel grid------")
         # 计算AABB
@@ -458,7 +557,7 @@ class VoxelCrop:
             # 添加contained voxel
             bb.addVoxel(voxel)
             # voxel反向索引
-            voxel.indexedByBB(bb.index)
+            # voxel.indexedByBB(bb.index)
             self.bbDict[index] = bb
 
         # step1 计算block node数量和前景密度，邻接grid_list
@@ -477,7 +576,7 @@ class VoxelCrop:
                 if index < adj_voxel_idx:
                     pair_name = str(index) + "_" + str(adj_voxel_idx)
                     if pair_name not in self.pairValueDict.keys():
-                        score = self.calCombineValue(bb, adj_bb)
+                        score, hiddenVoxelIdxSet, overlapVoxelIdxSet = self.calCombineValue(bb, adj_bb)
                         if score is not None:
                             newPair = PairBB(bb, adj_bb, score)
                             self.pairValueDict[pair_name] = newPair
@@ -485,7 +584,7 @@ class VoxelCrop:
                 else:
                     pair_name = str(adj_voxel_idx) + "_" + str(index)
                     if pair_name not in self.pairValueDict.keys():
-                        score = self.calCombineValue(bb, adj_bb)
+                        score, hiddenVoxelIdxSet, overlapVoxelIdxSet = self.calCombineValue(bb, adj_bb)
                         if score is not None:
                             newPair = PairBB(adj_bb, bb, score)
                             self.pairValueDict[pair_name] = newPair
@@ -500,13 +599,16 @@ class VoxelCrop:
         iter_cnt = 0
         while len(self.pairValueDict) > 0:
 
+            if iter_cnt == 51:
+                print("aaa")
             max_pair_name, max_pair = self.getMaxScorePair()
             # 合并
             bb1_index = max_pair.bb1.index
             bb2_index = max_pair.bb2.index
 
             print("------------------iter count", iter_cnt, bb_id_cnt, max_pair_name, "--------------------")
-            self.combine(bb1_index, bb2_index, bb_id_cnt)
+            if self.zero_overlap:
+                self.combine(bb1_index, bb2_index, bb_id_cnt)
             bb_id_cnt += 1
 
             print("iter cnt:", iter_cnt, "---", "len pv-dict:", len(self.pairValueDict))

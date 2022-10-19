@@ -97,7 +97,7 @@ if __name__ == '__main__':
 
     # crop
     # cropHandler = VoxelCropHandler(swc_nodes, voxel_size=64, box_max_size=512)
-    cropHandler = VoxelCrop(swc_nodes, voxel_size=64, box_max_size=512)
+    cropHandler = VoxelCrop(swc_nodes, voxel_size=64, box_max_size=512, zero_overlap=True)
     cropHandler.voxelCropAndCombineNew()
     # bb_list = cropHandler.voxelCrop()
     bb_list = cropHandler.getBBList()
