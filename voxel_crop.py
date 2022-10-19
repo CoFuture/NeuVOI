@@ -26,6 +26,9 @@ class Voxel:
     def indexedByBB(self, bb_index):
         self.inverseBBIndex.add(bb_index)
 
+    def getInverseIndexSet(self):
+        return self.inverseBBIndex
+
     def removeBBIndex(self, bb_index):
         self.inverseBBIndex.remove(bb_index)
 
@@ -140,6 +143,26 @@ class VoxelCrop:
 
         return voxel_index_list
 
+    # 检查是否有overlap
+    # input： pmin pmax exclusive_set{}
+    # output: overlap voxel set
+    def checkOverlap(self, pmin, pmax, exclusive_voxel_set, exclusive_block_id):
+        # overlap不考虑自身已有的
+        allVoxelKeysSet = set(self.voxelDict.keys())
+        scanVoxelKeySet = allVoxelKeysSet - exclusive_voxel_set
+
+        for v_idx in scanVoxelKeySet:
+            voxel = self.voxelDict[v_idx]
+            # 判断voxel是否indexed by其他block
+            voxel_position = voxel.position
+            if pmin[0] < voxel_position[0] < pmax[0] and pmin[1] < voxel_position[1] < pmax[1] and pmin[2] < voxel_position[2] < pmax[2]:
+                indexedSet = voxel.getInverseIndexSet()
+
+
+
+
+        pass
+
     # 计算combine分数, 返回值：value, new_bb_box
     def calCombineValue(self, bb1, bb2):
         # 计算AABB
@@ -186,6 +209,9 @@ class VoxelCrop:
         bb_new_min = [x_min, y_min, z_min]
         bb_new_max = [x_max, y_max, z_max]
 
+        # 极端一点zero overlap
+
+        # 其他参数阈值：block内总的node数量
         # 正相关参数：含有孤立voxel，接近新的
         # 负相关参数：overlap，
 
@@ -504,3 +530,10 @@ class VoxelCrop:
 
         return bb_list
 
+
+# if __name__ == '__main__':
+#     a = {
+#         "a": 1,
+#         "b": 2
+#     }
+#     print(set(a.keys()))
