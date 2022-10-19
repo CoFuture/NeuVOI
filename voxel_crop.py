@@ -73,6 +73,12 @@ class BoundingBox:
         if bb_idx in self.adjacentDict.keys():
             self.adjacentDict.pop(bb_idx)
 
+    def getNodes(self):
+        nodesList = []
+        for v_idx, voxel in self.containedVoxelDict.keys():
+            nodesList.extend(voxel.getNodes())
+        return nodesList
+
 
 class PairBB:
     def __init__(self, bb1, bb2, value=None):
@@ -107,11 +113,14 @@ class VoxelCrop:
 
         # voxel dict
         self.voxelDict = {}
-
         # bb hash dict
         self.bbDict = {}
         # combine pair dict
         self.pairValueDict = {}
+
+    # pmin, pmax内的overlap
+    def calculateOverlap(self, pmin, pmax, ):
+        pass
 
     def getAdjacentVoxelIndexList(self, voxel_index):
         voxel_index_list = []
@@ -178,7 +187,7 @@ class VoxelCrop:
         bb_new_max = [x_max, y_max, z_max]
 
         # 正相关参数：含有孤立voxel，接近新的
-        # 负相关参数：
+        # 负相关参数：overlap，
 
         # 优先合并孤立的voxel
         if b1_size == [self.voxelSize, self.voxelSize, self.voxelSize] or b2_size == [self.voxelSize, self.voxelSize,
@@ -484,11 +493,7 @@ class VoxelCrop:
         bb_list = []
         for bb_idx, bb in self.bbDict.items():
 
-            node_list = []
-            for v_id, voxel in bb.containedVoxelDict.items():
-                nodes = voxel.getNodes()
-                for n in nodes:
-                    node_list.append(n)
+            node_list = bb.getNodes()
 
             value_new = {
                 "pos": bb.position,
