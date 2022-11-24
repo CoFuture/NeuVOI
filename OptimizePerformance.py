@@ -29,9 +29,7 @@ segmentBlockSize = 256
 if __name__ == '__main__':
     # parse arg
     # datasetName = sys.argv[1]
-
     datasetName = "Test"
-
     print(datasetName)
 
     if datasetName not in dataPath.keys():
@@ -48,6 +46,7 @@ if __name__ == '__main__':
     swc_list_length = len(swcList)
 
     for swc in swcList:
+        print("file name:", os.path.basename(swc))
 
         SWC = SWCReader(swc)
 
@@ -55,7 +54,7 @@ if __name__ == '__main__':
         swc_nodes_cnt = len(SWC.getSWCData())
 
         # 检查是否有node
-        print("node count:", len(SWC.getSWCData()), "swc count:", len(SWC.getSWCSegments()))
+        # print("node count:", len(SWC.getSWCData()), "swc count:", len(SWC.getSWCSegments()))
 
         if len(SWC.getSWCData()) <= 0 or len(SWC.getSWCSegments()) <= 0:
             iter_cnt += 1

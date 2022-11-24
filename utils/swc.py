@@ -99,6 +99,7 @@ class SWCReader:
             if index_bit_map[node.index - 1] == 1 or node.isEnd is False:
                 continue
 
+            print(node.index)
             temp_node = node
             while index_bit_map[temp_node.index - 1] == 0:
                 seg_temp.append(temp_node.getData())
