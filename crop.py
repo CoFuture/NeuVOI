@@ -53,6 +53,24 @@ class AABBBox:
         return center
 
 
+class BaselineCropHandler:
+    def __init__(self, swc_nodes, box_size=256):
+        self.swcNodes = swc_nodes
+        self.boxSize = box_size
+        pass
+
+    def baselineCrop(self):
+        bb_list = []
+
+        for node in self.swcNodes:
+            tempBox = {
+                "pos": [node["x"], node["y"], node["z"]],
+                "size": [self.boxSize, self.boxSize, self.boxSize]
+            }
+            bb_list.append(tempBox)
+
+        return bb_list
+
 # segment crop
 class CropHandler:
     def __init__(self, swc_segments):
@@ -107,13 +125,14 @@ class CropHandler:
                         box = AABBBox(node_pos, node_pos, size_threshold=sizeThreshold)
 
             # 最后一个bb的处理
-            bb_center = box.getCenter()
-            bb_info = {
-                "pos": bb_center,
-                "size": bb_size,
-                "nodes": copy.deepcopy(node_list)
-            }
-            seg_bb_list.append(bb_info)
+            if box is not None:
+                bb_center = box.getCenter()
+                bb_info = {
+                    "pos": bb_center,
+                    "size": bb_size,
+                    "nodes": copy.deepcopy(node_list)
+                }
+                seg_bb_list.append(bb_info)
 
             # 添加到总体的list中
             bb_list.append(seg_bb_list)

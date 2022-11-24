@@ -515,7 +515,7 @@ class VoxelCrop:
             self.pairValueDict[pname] = pair
 
     def voxelCropAndCombineNew(self, box_padding=5):
-        print("-----start compute voxel grid------")
+        # print("-----start compute voxel grid------")
         # 计算AABB
         x_min = self.swcNodes[0]["x"]
         x_max = self.swcNodes[0]["x"]
@@ -575,26 +575,26 @@ class VoxelCrop:
                 new_voxel = Voxel(hx, hy, hz, grid_index, self.voxelSize, grid_pos)
                 self.voxelDict[grid_index] = new_voxel
 
-        print("voxel size:", self.voxelSize)
-        print("total voxels:", len(self.voxelDict))
+        # print("voxel size:", self.voxelSize)
+        # print("total voxels:", len(self.voxelDict))
 
         """保存grid的信息"""
-        gridList = []
-        for index, voxel in self.voxelDict.items():
-            grid_data = {
-                "pos": voxel.position,
-                "size": voxel.size
-            }
-            gridList.append(grid_data)
-        with open("RunData/voxel_grid.json", 'w') as f:
-            print("------save grid data------")
-            json.dump(gridList, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
+        # gridList = []
+        # for index, voxel in self.voxelDict.items():
+        #     grid_data = {
+        #         "pos": voxel.position,
+        #         "size": voxel.size
+        #     }
+        #     gridList.append(grid_data)
+        # with open("RunData/voxel_grid.json", 'w') as f:
+        #     print("------save grid data------")
+        #     json.dump(gridList, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
 
         """------------------------------block combine----------------------------------"""
-        print("-----start block combine------")
+        # print("-----start block combine------")
         # pair value dict
 
-        print("-----start init combined bounding box-----")
+        # print("-----start init combined bounding box-----")
         for index, voxel in self.voxelDict.items():
             bb = BoundingBox(index, voxel.position, voxel.size)
             # 添加contained voxel
@@ -604,7 +604,7 @@ class VoxelCrop:
 
         # step1 计算block node数量和前景密度，邻接grid_list
         # 复杂度O(n^2)有优化空间
-        print("======step1 initial pv_dict && combined_bb_dict======")
+        # print("======step1 initial pv_dict && combined_bb_dict======")
         for index, bb in self.bbDict.items():
             # 更新邻接关系 adjacent voxel
             adjacentVoxelIdxList = self.getAdjacentVoxelIndexList(index)
@@ -631,13 +631,13 @@ class VoxelCrop:
                             newPair = PairBB(adj_bb, bb, score)
                             self.pairValueDict[pair_name] = newPair
 
-        print("initial len of pv_dict:", len(self.pairValueDict))
+        # print("initial len of pv_dict:", len(self.pairValueDict))
 
         # 全局的id计数器，用于给合并后的bb命名
         bb_id_cnt = self.dx * self.dy * self.dz + 1
 
         # 循环终止条件 无可合并价值的block
-        print("======step2 start combine======")
+        # print("======step2 start combine======")
         iter_cnt = 0
         while len(self.pairValueDict) > 0:
 
@@ -648,12 +648,12 @@ class VoxelCrop:
             bb2_index = max_pair.bb2.index
 
 
-            print("------------------iter count", iter_cnt, bb_id_cnt, max_pair_name, "--------------------")
+            # print("------------------iter count", iter_cnt, bb_id_cnt, max_pair_name, "--------------------")
             self.combine(bb1_index, bb2_index, bb_id_cnt)
             bb_id_cnt += 1
 
 
-            print("iter cnt:", iter_cnt, "---", "len pv-dict:", len(self.pairValueDict))
+            # print("iter cnt:", iter_cnt, "---", "len pv-dict:", len(self.pairValueDict))
             iter_cnt += 1
         # step2 计算 block pair --> combine_value 对
 

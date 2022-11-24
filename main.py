@@ -3,7 +3,7 @@ import os
 import random
 
 from utils.swc import SWCReader
-from crop import CropHandler, VoxelCropHandler
+from crop import CropHandler, VoxelCropHandler, BaselineCropHandler
 from voxel_crop import VoxelCrop
 import json
 
@@ -53,6 +53,21 @@ def calVoxelGridPerformance(bbList):
 
 
 if __name__ == '__main__':
+    """------------------------baseline crop-------------------------"""
+    swc_path = os.path.join(os.getcwd(), "swc/18454_00158_resample200.swc")
+    SWC = SWCReader(swc_path)
+    print("filename:", SWC.getSWCFileName())
+    swc_nodes = SWC.getSWCData()
+
+    # crop
+    # cropHandler = VoxelCropHandler(swc_nodes, voxel_size=64, box_max_size=512)
+    cropHandler = BaselineCropHandler(swc_nodes)
+    # bb_list = cropHandler.voxelCrop()
+    bb_list = cropHandler.baselineCrop()
+    # 记录bb list信息
+    with open("RunData/18454_00158_resample200_baseline_bb.json", 'w') as f:
+        json.dump(bb_list, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
+
     """------------------------version 1.0 segment crop-------------------------"""
     # swc_path = os.path.join(os.getcwd(), "swc/18454_00158.swc")
     # SWC = SWCReader(swc_path)
@@ -90,37 +105,37 @@ if __name__ == '__main__':
     # print("optimize box cnt", box_cnt)
 
     """------------------------version 2.0 voxel grid crop-------------------------"""
-    swc_path = os.path.join(os.getcwd(), "swc/18454_00158.swc")
-    SWC = SWCReader(swc_path)
-    print("filename:", SWC.getSWCFileName())
-    swc_nodes = SWC.getSWCData()
+    # swc_path = os.path.join(os.getcwd(), "swc/18454_00158.swc")
+    # # swc_path = os.path.join(os.getcwd(), "swc/17302_00001.swc")
+    # SWC = SWCReader(swc_path)
+    # print("filename:", SWC.getSWCFileName())
+    # swc_nodes = SWC.getSWCData()
 
     # crop
-    # cropHandler = VoxelCropHandler(swc_nodes, voxel_size=64, box_max_size=512)
-    cropHandler = VoxelCrop(swc_nodes, voxel_size=64, box_max_size=512, zero_overlap=True)
-    cropHandler.voxelCropAndCombineNew()
-    # bb_list = cropHandler.voxelCrop()
-    bb_list = cropHandler.getBBList()
-
-    # 计算baseline
-    volume_base, mem_base = calBaseline(SWC.getNodeCnt(), [256, 256, 256])
-    volume_optimize, box_cnt = calVoxelGridPerformance(bb_list)
-    print("baseline volume:", volume_base)
-    print("baseline memory(Byte):", mem_base)
-    print("baseline box cnt", SWC.getNodeCnt())
-
-    print("\n")
-    print("optimize memory(Byte):", volume_optimize)
-    print("optimize memory(Byte):", mem_base)
-    print("optimize box cnt", box_cnt)
+    # cropHandler = VoxelCrop(swc_nodes, voxel_size=64, box_max_size=512, zero_overlap=True)
+    # cropHandler.voxelCropAndCombineNew()
+    # # bb_list = cropHandler.voxelCrop()
+    # bb_list = cropHandler.getBBList()
     #
-    # # 记录swc node信息
-    # with open("results/swc.json", 'w') as f:
-    #     json.dump(SWC.getSWCData(), f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
+    # # 计算baseline
+    # volume_base, mem_base = calBaseline(SWC.getNodeCnt(), [256, 256, 256])
+    # volume_optimize, box_cnt = calVoxelGridPerformance(bb_list)
+    # print("baseline volume:", volume_base)
+    # print("baseline memory(Byte):", mem_base)
+    # print("baseline box cnt", SWC.getNodeCnt())
     #
-    # 记录bb list信息
-    with open("RunData/voxel_crop_bb_new.json", 'w') as f:
-        json.dump(bb_list, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
+    # print("\n")
+    # print("optimize memory(Byte):", volume_optimize)
+    # print("optimize memory(Byte):", mem_base)
+    # print("optimize box cnt", box_cnt)
+    # #
+    # # # 记录swc node信息
+    # # with open("results/swc.json", 'w') as f:
+    # #     json.dump(SWC.getSWCData(), f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
+    # #
+    # # 记录bb list信息
+    # with open("RunData/voxel_crop_bb_new.json", 'w') as f:
+    #     json.dump(bb_list, f, indent=2, sort_keys=True, ensure_ascii=False)  # 写为多行
 
     """随机选一个block 用于展示"""
     # # 存一个block中的node 位置信息
