@@ -89,22 +89,28 @@ class SWCReader:
 
         for node in self.swc_node_list:
             # 首node特殊处理
-            if node.parent is None:
-                index_bit_map[node.index - 1] = 1
-                seg_temp.append(node.getData())
-                seg_list.append(copy.deepcopy(seg_temp))
-                seg_temp = []
-                continue
+            # if node.parent is None:
+            #     index_bit_map[node.index - 1] = 1
+            #     seg_temp.append(node.getData())
+            #     seg_list.append(copy.deepcopy(seg_temp))
+            #     seg_temp = []
+            #     continue
 
             if index_bit_map[node.index - 1] == 1 or node.isEnd is False:
                 continue
 
-            print(node.index)
+            # print(node.index)
             temp_node = node
+
             while index_bit_map[temp_node.index - 1] == 0:
                 seg_temp.append(temp_node.getData())
                 index_bit_map[temp_node.index - 1] = 1
                 temp_node = temp_node.parent
+
+                if temp_node is None:
+                    break
+
+                # print(temp_node.index)
 
             seg_list.append(copy.deepcopy(seg_temp))
             seg_temp = []

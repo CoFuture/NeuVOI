@@ -54,7 +54,7 @@ if __name__ == '__main__':
         swc_nodes_cnt = len(SWC.getSWCData())
 
         # 检查是否有node
-        # print("node count:", len(SWC.getSWCData()), "swc count:", len(SWC.getSWCSegments()))
+        print("node count:", len(SWC.getSWCData()), "swc segment count:", len(SWC.getSWCSegments()))
 
         if len(SWC.getSWCData()) <= 0 or len(SWC.getSWCSegments()) <= 0:
             iter_cnt += 1
