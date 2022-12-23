@@ -21,13 +21,8 @@ This projected is started by Sheng-Dian Jiang and Yu-Ning Hang ([CoFuture](https
 
 ### 2. segment-level algorithm
 
-
-（2）voxel based
-方法流程图 \
-参数列表和可能影响 \
-方法效果 \
-
-supplementary
+### supplementary
+包围盒自动生长
 
 ## Acknowledgements
 Thanks to the guidance of Sheng-Dian Jiang
