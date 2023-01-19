@@ -1,5 +1,9 @@
 import copy
 import json
+import os
+import glob
+import config
+from utils.swc import SWCReader
 
 
 # 包围盒的基本操作
@@ -53,26 +57,7 @@ class AABBBox:
         return center
 
 
-class BaselineCropHandler:
-    def __init__(self, swc_nodes, box_size=256):
-        self.swcNodes = swc_nodes
-        self.boxSize = box_size
-        pass
-
-    def baselineCrop(self):
-        bb_list = []
-
-        for node in self.swcNodes:
-            tempBox = {
-                "pos": [node["x"], node["y"], node["z"]],
-                "size": [self.boxSize, self.boxSize, self.boxSize]
-            }
-            bb_list.append(tempBox)
-
-        return bb_list
-
-# segment crop
-class CropHandler:
+class SegmentCrop:
     def __init__(self, swc_segments):
         self.swcSegments = swc_segments
 
@@ -138,3 +123,36 @@ class CropHandler:
             bb_list.append(seg_bb_list)
 
         return bb_list
+
+
+if __name__ == '__main__':
+    swcDirPath = os.path.join(os.getcwd(), "input")
+    swcFilePathList = glob.glob(os.path.join(swcDirPath, "*"))
+
+    for swcPath in swcFilePathList:
+        SWC = SWCReader(swcPath)
+        swc_segments = SWC.getSWCSegments()
+
+        # crop
+        cropHandler = SegmentCrop(swc_segments)
+        bb_list = cropHandler.segmentCropWithFixedBB(config.bb_size)
+
+        # bb list to json
+        bbListJson = []
+        for sbbList in bb_list:
+            for bb in sbbList:
+                bbData = {
+                    "pos": bb["pos"],
+                    "size": bb["size"]
+                }
+                bbListJson.append(bbData)
+
+        swcName = os.path.basename(swcPath)
+        jsonFileName = swcName.split(".")[0] + ".json"
+        saveFilePath = os.path.join(os.getcwd(), "output", jsonFileName)
+
+        # 记录bb list信息
+        with open(saveFilePath, 'w') as f:
+            json.dump(bbListJson, f, indent=2, sort_keys=True, ensure_ascii=False)
+
+        print(swcName, " finished")

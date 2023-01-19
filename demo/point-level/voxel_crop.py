@@ -1,6 +1,9 @@
 import copy
+import glob
 import json
-
+import os
+from utils.swc import SWCReader
+import config
 
 class Voxel:
     def __init__(self, x=0, y=0, z=0, index=0, size=64, pos=None, nodes=None):
@@ -672,3 +675,26 @@ class VoxelCrop:
             bb_list.append(value_new)
 
         return bb_list
+
+
+if __name__ == '__main__':
+    swcDirPath = os.path.join(os.getcwd(), "input")
+    swcFilePathList = glob.glob(os.path.join(swcDirPath, "*"))
+
+    for swcPath in swcFilePathList:
+        SWC = SWCReader(swcPath)
+        swc_nodes = SWC.getSWCData()
+
+        cropHandler = VoxelCrop(swc_nodes, voxel_size=config.voxel_size, box_max_size=config.max_size, zero_overlap=config.overlap)
+        cropHandler.voxelCropAndCombineNew()
+        bb_list = cropHandler.getBBList()
+
+        swcName = os.path.basename(swcPath)
+        jsonFileName = swcName.split(".")[0] + ".json"
+        saveFilePath = os.path.join(os.getcwd(), "output", jsonFileName)
+
+        # 记录bb list信息
+        with open(saveFilePath, 'w') as f:
+            json.dump(bb_list, f, indent=2, sort_keys=True, ensure_ascii=False)
+
+        print(swcName, " finished")
