@@ -1,5 +1,12 @@
 import os
 import copy
+from enum import Enum
+
+
+# 创建一个枚举类
+class FileType(Enum):
+    SWC = 0
+    ESWC = 1
 
 
 class SWCNode:
@@ -96,38 +103,78 @@ class SWCReader:
         # segment node map
         self.segments = {}
 
+        self.parseFile(f_path)
+
+    def parseFile(self, f_path):
+        fType = FileType
         if str(f_path).endswith(".swc"):
-            self.parseSWC(f_path)
+            fType = FileType.SWC
         elif str(f_path).endswith(".eswc"):
-            self.parseESWC(f_path)
+            fType = FileType.ESWC
         else:
             print("Not supported file type")
+            return
 
-    def parseSWC(self, f_path):
-        # read data
-        with open(f_path, "r") as f:
-            content = f.readlines()
-            # 只读取info，不需要注释信息
-            for node_info in content:
-                if node_info[0] == "#":
-                    # print("get annotation, skipped")
-                    continue
+        # initial bit map for build segments
+        index_bit_map = {}
+        if fType == FileType.ESWC:
+            with open(f_path, "r") as f:
+                content = f.readlines()
+                # 只读取info，不需要注释信息
+                for node_info in content:
+                    if node_info[0] == "#":
+                        # print("get annotation, skipped")
+                        continue
 
-                node_info = (node_info.strip()).split()
-                idx = int(node_info[0])
-                node_type = int(node_info[1])
-                x = float(node_info[2])
-                y = float(node_info[3])
-                z = float(node_info[4])
-                radius = float(node_info[5])
-                parent = int(node_info[6])
+                    node_info = (node_info.strip()).split()
+                    idx = int(node_info[0])
+                    node_type = int(node_info[1])
+                    x = float(node_info[2])
+                    y = float(node_info[3])
+                    z = float(node_info[4])
+                    radius = float(node_info[5])
+                    parent = int(node_info[6])
 
-                node = SWCNode(idx, node_type, x, y, z, radius, parent)
-                self.swcNodeList.append(node)
-                self.swcNodes[idx] = node
+                    # something new
+                    segment_id = node_info[7]
+                    level = node_info[8]
+                    mode = node_info[9]
+                    timestamp = node_info[10]
+
+                    node = ESWCNode(idx, node_type, x, y, z, radius, parent, segment_id, level, mode, timestamp)
+                    self.swcNodeList.append(node)
+                    self.swcNodes[idx] = node
+                    # index bit map False->not visited
+                    index_bit_map[idx] = False
+        else:
+            # 默认当作swc处理
+            # read data
+            with open(f_path, "r") as f:
+                content = f.readlines()
+                # 只读取info，不需要注释信息
+                for node_info in content:
+                    if node_info[0] == "#":
+                        # print("get annotation, skipped")
+                        continue
+
+                    node_info = (node_info.strip()).split()
+                    idx = int(node_info[0])
+                    node_type = int(node_info[1])
+                    x = float(node_info[2])
+                    y = float(node_info[3])
+                    z = float(node_info[4])
+                    radius = float(node_info[5])
+                    parent = int(node_info[6])
+
+                    node = SWCNode(idx, node_type, x, y, z, radius, parent)
+                    self.swcNodeList.append(node)
+                    self.swcNodes[idx] = node
+                    # index bit map False->not visited
+                    index_bit_map[idx] = False
 
         # build link
-        for node in self.swcNodeList:
+        for node in self.swcNodes.values():
+        # for node in self.swcNodeList:
             if node.parent_id == -1:
                 continue
 
@@ -135,20 +182,26 @@ class SWCReader:
             parent_node.isEnd = False
             node.setParent(parent_node)
 
+        # for node in self.swcNodes.values():
+        #     if node.isEnd:
+        #         print("find end node", node.index)
+
         # build raw segments
         segment_id = 0
         seg_temp = []
 
-        index_bit_map = [0] * len(self.swcNodeList)
-        for node in self.swcNodeList:
-            if index_bit_map[node.index - 1] == 1 or node.isEnd is False:
+        # initial bit map
+        for node in self.swcNodes.values():
+        # for node in self.swcNodeList:
+            if index_bit_map[node.index] is True or node.isEnd is False:
+                # print(node.index, index_bit_map[node.index], node.isEnd)
                 continue
 
             temp_node = node
-            while index_bit_map[temp_node.index - 1] == 0:
+            while index_bit_map[temp_node.index] is False:
                 seg_temp.append(temp_node)
-                node.seg_id = segment_id
-                index_bit_map[temp_node.index - 1] = 1
+                temp_node.seg_id = segment_id
+                index_bit_map[temp_node.index] = True
 
                 temp_node = temp_node.parent
                 if temp_node is None:
@@ -158,74 +211,12 @@ class SWCReader:
             segment_id += 1
             seg_temp = []
 
+        unsegged_cnt = 0
         for node in self.swcNodeList:
             if node.seg_id == -1:
-                print("find unsegmented node:", node.index, node.parent_id)
-        pass
-
-    def parseESWC(self, f_path):
-        # read data
-        with open(f_path, "r") as f:
-            content = f.readlines()
-            # 只读取info，不需要注释信息
-            for node_info in content:
-                if node_info[0] == "#":
-                    # print("get annotation, skipped")
-                    continue
-
-                node_info = (node_info.strip()).split()
-                idx = int(node_info[0])
-                node_type = int(node_info[1])
-                x = float(node_info[2])
-                y = float(node_info[3])
-                z = float(node_info[4])
-                radius = float(node_info[5])
-                parent = int(node_info[6])
-
-                # something new
-                segment_id = node_info[7]
-                level = node_info[8]
-                mode = node_info[9]
-                timestamp = node_info[10]
-
-                node = ESWCNode(idx, node_type, x, y, z, radius, parent, segment_id, level, mode, timestamp)
-                self.swcNodeList.append(node)
-
-        # build link
-        for node in self.swcNodeList:
-            if node.parent_id == -1:
-                continue
-
-            parent_node = self.swcNodeList[node.parent_id - 1]
-            parent_node.isEnd = False
-            node.setParent(parent_node)
-
-        # build raw segments
-        segment_id = 0
-        seg_temp = []
-
-        index_bit_map = [0] * len(self.swcNodeList)
-        for node in self.swcNodeList:
-            if index_bit_map[node.index - 1] == 1 or node.isEnd is False:
-                continue
-
-            temp_node = node
-            while index_bit_map[temp_node.index - 1] == 0:
-                seg_temp.append(temp_node)
-                node.seg_id = segment_id
-                index_bit_map[temp_node.index - 1] = 1
-
-                temp_node = temp_node.parent
-                if temp_node is None:
-                    break
-
-            self.segments[segment_id] = seg_temp
-            segment_id += 1
-            seg_temp = []
-
-        for node in self.swcNodeList:
-            if node.seg_id == -1:
-                print("find unsegmented node:", node.index, node.parent_id)
+                unsegged_cnt += 1
+                # print("find unsegmented node:", node.index, node.parent_id)
+        print("unseged count", unsegged_cnt)
 
     def getNodeCnt(self):
         return len(self.swcNodeList)
@@ -235,7 +226,7 @@ class SWCReader:
 
     def getSWCData(self):
         data = []
-        for node in self.swcNodeList:
+        for node in self.swcNodes.values():
             data.append(node.getData())
         return data
 
@@ -249,8 +240,8 @@ class SWCReader:
 if __name__ == '__main__':
     # swc_path = os.path.join(os.getcwd(), "swc/191797_x6369_y23270_z9122_task00001.swc")
     # swc_path = os.path.join(os.getcwd(), "swc_test/18454_00158.swc")
-    # swc_path = os.path.join(os.getcwd(), "18454_00158.swc")
-    swc_path = os.path.join(os.getcwd(), "18458_00375.eswc")
+    swc_path = os.path.join(os.getcwd(), "18454_00158.swc")
+    # swc_path = os.path.join(os.getcwd(), "18454_00097.eswc")
     SWC = SWCReader(swc_path)
     print("filename:", SWC.getSWCFileName())
     swc_data = SWC.getSWCData()
