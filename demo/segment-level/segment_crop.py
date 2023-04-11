@@ -81,18 +81,18 @@ class SegmentCrop:
 
             for node in seg:
                 # 获取node pos
-                node_pos = [node["x"], node["y"], node["z"]]
+                node_pos = [node.x, node.y, node.z]
 
                 if len(node_list) == 0:
                     # 保存node
-                    node_list.append(node["idx"])
+                    node_list.append(node.index)
                     # 新建一个box
                     box = AABBBox(node_pos, node_pos, size_threshold=sizeThreshold)
                 else:
                     # 计算 node 加入后的bb
                     if box.addNode(node_pos):
                         # 成功加入box
-                        node_list.append(node["idx"])
+                        node_list.append(node.index)
                     else:
                         # 导出bb
                         bb_center = box.getCenter()
@@ -104,7 +104,7 @@ class SegmentCrop:
                         seg_bb_list.append(bb_info)
 
                         # 初始化基础对象
-                        node_list = [node["idx"]]
+                        node_list = [node.index]
                         # aabb 基本信息
                         del box
                         box = AABBBox(node_pos, node_pos, size_threshold=sizeThreshold)
@@ -130,6 +130,7 @@ if __name__ == '__main__':
     swcFilePathList = glob.glob(os.path.join(swcDirPath, "*"))
 
     for swcPath in swcFilePathList:
+        print(swcPath)
         SWC = SWCReader(swcPath)
         swc_segments = SWC.getSWCSegments()
 

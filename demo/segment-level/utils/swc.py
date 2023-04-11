@@ -240,8 +240,8 @@ class SWCReader:
 if __name__ == '__main__':
     # swc_path = os.path.join(os.getcwd(), "swc/191797_x6369_y23270_z9122_task00001.swc")
     # swc_path = os.path.join(os.getcwd(), "swc_test/18454_00158.swc")
-    swc_path = os.path.join(os.getcwd(), "18454_00158.swc")
-    # swc_path = os.path.join(os.getcwd(), "18454_00097.eswc")
+    # swc_path = os.path.join(os.getcwd(), "18454_00158.swc")
+    swc_path = os.path.join(os.getcwd(), "18454_00097.eswc")
     SWC = SWCReader(swc_path)
     print("filename:", SWC.getSWCFileName())
     swc_data = SWC.getSWCData()
