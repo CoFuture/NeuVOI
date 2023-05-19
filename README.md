@@ -84,11 +84,12 @@ python segment_crop.py
 
 Here is a detailed description of the parameters below.
 
-| Parameter | Description                                     | Range        | Default |
-|-----------|-------------------------------------------------|--------------|---------|
-| Input     | input file (.swc) path                          | /            | /       |
-| Output    | output file (.json) path                        | /            | /       |
-| bb_size   | The size of bounding box when dividing segments | unlimited    | 256     |
+| Parameter    | Description                                         | Range     | Default |
+|--------------|-----------------------------------------------------|-----------|---------|
+| Input        | input file (.swc) path                              | /         | /       |
+| Output       | output file (.json) path                            | /         | /       |
+| max_bb_size  | The max size of bounding box when dividing segments | unlimited | 256     |
+| padding_size | The padding size when finalizing bounding box       | unlimited | 64      |
 
 
 ### supplementary

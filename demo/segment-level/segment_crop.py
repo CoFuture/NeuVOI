@@ -61,11 +61,11 @@ class SegmentCrop:
     def __init__(self, swc_segments):
         self.swcSegments = swc_segments
 
-    def segmentCropWithFixedBB(self, bb_size=None):
-        if bb_size is None:
+    def segmentCropWithFixedBB(self, max_bb_size=None, padding=5):
+        if max_bb_size is None:
             sizeThreshold = [256, 256, 256]
         else:
-            sizeThreshold = bb_size
+            sizeThreshold = max_bb_size
 
         # bounding box list
         bb_list = []
@@ -96,9 +96,21 @@ class SegmentCrop:
                     else:
                         # 导出bb
                         bb_center = box.getCenter()
+                        x_size, y_size, z_size = box.getSize()
+
+                        if max([x_size, y_size, z_size]) == x_size:
+                            final_bb_size = [x_size, min(y_size + padding, sizeThreshold[1]),
+                                             min(z_size + padding, sizeThreshold[2])]
+                        elif max([x_size, y_size, z_size]) == y_size:
+                            final_bb_size = [min(x_size + padding, sizeThreshold[0]), y_size,
+                                             min(z_size + padding, sizeThreshold[2])]
+                        else:
+                            final_bb_size = [min(x_size + padding, sizeThreshold[0]),
+                                             min(y_size + padding, sizeThreshold[1]), z_size]
+
                         bb_info = {
                             "pos": bb_center,
-                            "size": bb_size,
+                            "size": final_bb_size,
                             "nodes": copy.deepcopy(node_list)
                         }
                         seg_bb_list.append(bb_info)
@@ -112,9 +124,18 @@ class SegmentCrop:
             # 最后一个bb的处理
             if box is not None:
                 bb_center = box.getCenter()
+                x_size, y_size, z_size = box.getSize()
+
+                if max([x_size, y_size, z_size]) == x_size:
+                    final_bb_size = [x_size, min(y_size + padding, sizeThreshold[1]), min(z_size + padding, sizeThreshold[2])]
+                elif max([x_size, y_size, z_size]) == y_size:
+                    final_bb_size = [min(x_size + padding, sizeThreshold[0]), y_size, min(z_size + padding, sizeThreshold[2])]
+                else:
+                    final_bb_size = [min(x_size + padding, sizeThreshold[0]), min(y_size + padding, sizeThreshold[1]), z_size]
+
                 bb_info = {
                     "pos": bb_center,
-                    "size": bb_size,
+                    "size": final_bb_size,
                     "nodes": copy.deepcopy(node_list)
                 }
                 seg_bb_list.append(bb_info)
@@ -136,7 +157,7 @@ if __name__ == '__main__':
 
         # crop
         cropHandler = SegmentCrop(swc_segments)
-        bb_list = cropHandler.segmentCropWithFixedBB(config.bb_size)
+        bb_list = cropHandler.segmentCropWithFixedBB(config.max_bb_size, padding=config.padding_size)
 
         # bb list to json
         bbListJson = []
