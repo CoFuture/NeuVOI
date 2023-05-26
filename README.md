@@ -1,23 +1,36 @@
-# NeuVOI
+# NeuVOI:  A tool for the optimal extraction of the neuron’s volumes of interest from its whole-brain image dataset
 
 ---
+## Introduction
 
-This is an acceleration kits for **back indexing** large scale image data from its digitalized structures. \
-E.g. Back index raw Neuron image according to its tracing structure(*.swc) to get an image of a specific area.
+    This is a tool for efficient extraction of a neuron's Volumes of Interest from large-scale image datasets. 
 
-![workflow.png](Images%2Fworkflow.png)
 
-This projected is started by Yu-Ning Hang ([CoFuture](https://github.com/CoFuture)) and Sheng-Dian Jiang in 2022, SEU-ALLEN, Nanjing, China.
+- An example of extracting a VOI from whole-brain data for neuron reconstruction at a specific location.
+![example_of_extractionVOI.png](Images%2Fexample_of_extractionVOI.png)
+
+
+- Comparison of the effects of different VOI extraction methods. The fixed-scale partition strategy uniformly divides the entire space using a predetermined partition size based on the bounding box of the neuron morphology data. It then retains only those partitioned blocks that contain neurites. Here, we provide two sets of sizes to demonstrate the partitioning effect of this strategy.
+![method comparison.png](Images%2Fvoi_cmp.png)
+
+
+**This projected is started by Yuning Hang ([CoFuture](https://github.com/CoFuture)) and Shengdian Jiang ([SD-Jiang](https://github.com/SD-Jiang)) in 2022, Institute, Nanjing, China.**
 
 ## Tutorial
 
 ---
 
-In order to cope with different applicable scenarios, here we propose and implement two back indexing methods: `point-level` algorithm and `segment-level` algorithm. These two algorithms have a high degree of freedom and customizable space. The workflow and usage of the two algorithms are described in detail below. 
+    The neuronal volumes of interest extraction applications can be categorized depending on whether topological information is considered. Topologically irrelevant applications, such as sharing image volumes of individual neurons , neurite radius estimation , and image intensity extraction, treat SWC nodes of a neuron reconstruction as a set of independent points. While for tasks such as neuronal skeleton refinement, production of dendritic spines, and axonal boutons, image information of topologically connected or neighboring nodes of a processing node has to be considered before decision-making. NeuVOI serves as an application-oriented tool and implements two algorithms for different scenarios.
 
-### point-level algorithm
-#### Overall effect
+
+### Point-level algorithm
+    For applications where topology of SWC nodes is unnecessary
 ![point-level effect.png](Images%2Fpoint-level%20effect.png)
+
+The strategy of our algorithm is to firstly partition the entire SWC node space into smaller blocks, and then merge adjacent blocks while considering the following constraints: 
+1) computer memory limitations; 
+2) user-defined maximum block size; 
+3) proportion of single voxel containing SWC nodes in the block. 
 
 #### Applicable scene
 
@@ -104,7 +117,7 @@ First, a bounding box is initialized by two nodes. As long as the BB size limit 
 
 ---
 
-Thanks to the guidance of Sheng-Dian Jiang and Han-Chuan Peng
+Thanks to the guidance of Yufeng Liu and Hanchuan Peng
 
 ## License
 
