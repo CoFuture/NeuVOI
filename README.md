@@ -45,8 +45,10 @@ The algorithm is mainly divided into two steps
 2. Calculate the combine value and iteratively combine the voxel grid
 
 Here are two flowcharts of the algorithm
-![point-level flowchart1.png](Images%2Fpoint-level%20flowchart1.png)
-![point-level flowchart2.png](Images%2Fpoint-level%20flowchart2.png)
+![point-level-gridding.png](Images/point-level-gridding.png)
+![point-level-combining.png](Images/point-level-combining.png)
+
+
 
 ps. The combined value calculation function is currently hard-coded. If you have a deep understanding of the source code, you can try to modify the `calCombineValue` function in `voxel_crop.py`. Subsequent updates will provide a custom interface for the value function.
 
