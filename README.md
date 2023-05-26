@@ -3,7 +3,7 @@
 ---
 ## Introduction
 
-    This is a tool for efficient extraction of a neuron's Volumes of Interest from large-scale image datasets. 
+This is a tool for efficient extraction of a neuron's Volumes of Interest from large-scale image datasets. 
 
 
 - An example of extracting a VOI from whole-brain data for neuron reconstruction at a specific location.
@@ -20,7 +20,7 @@
 
 ---
 
-    The neuronal volumes of interest extraction applications can be categorized depending on whether topological information is considered. Topologically irrelevant applications, such as sharing image volumes of individual neurons , neurite radius estimation , and image intensity extraction, treat SWC nodes of a neuron reconstruction as a set of independent points. While for tasks such as neuronal skeleton refinement, production of dendritic spines, and axonal boutons, image information of topologically connected or neighboring nodes of a processing node has to be considered before decision-making. NeuVOI serves as an application-oriented tool and implements two algorithms for different scenarios.
+The neuronal volumes of interest extraction applications can be categorized depending on whether topological information is considered. Topologically irrelevant applications, such as sharing image volumes of individual neurons , neurite radius estimation , and image intensity extraction, treat SWC nodes of a neuron reconstruction as a set of independent points. While for tasks such as neuronal skeleton refinement, production of dendritic spines, and axonal boutons, image information of topologically connected or neighboring nodes of a processing node has to be considered before decision-making. NeuVOI serves as an application-oriented tool and implements two algorithms for different scenarios.
 
 
 ### Point-level algorithm
